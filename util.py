@@ -3,7 +3,7 @@ import hashlib
 
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
-
+import time
 
 def hash(*args) -> bytes:
     h = hashlib.sha256()
@@ -45,3 +45,6 @@ def encrypt(key, iv, data) -> bytes:
     return encrypted_data
 
 
+def time_stamp():
+    time_int = time.time_ns()
+    return time_int.to_bytes(8, byteorder='big')
