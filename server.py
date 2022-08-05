@@ -1,5 +1,6 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import constants
+
+import config
 import os.path
 import urllib.parse as parse
 import json
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     #     exit(1)
     # addr = (sys.argv[1], int(sys.argv[2]))
     logging.basicConfig(level=logging.INFO)
-    addr = (constants.HS_IP, constants.HS_PORT)
+    addr = (config.server_ip, config.server_port)
     server = HTTPServer(addr, HSRequestHandler)
     logging.info("serving requests from %s", addr)
     server.serve_forever()
