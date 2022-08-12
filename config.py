@@ -10,3 +10,7 @@ doc_db_path = _path['doc_db']
 _server = config['server']
 server_ip = _server['ip']
 server_port = _server['port']
+
+_blockchain_node = config['url']['blockchain_node']
+batches_url = _blockchain_node['batches']
+state_url = _blockchain_node['state']

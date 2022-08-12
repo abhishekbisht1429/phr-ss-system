@@ -9,7 +9,9 @@ import json
 import config
 from http import HTTPStatus
 import requests
-
+import blockchain_client as bc
+import config
+from constants import TXN_NAMESPACE
 
 def __authenticate(user_id, passwd):
     with shelve.open(config.user_db_path) as udb:
@@ -65,3 +67,22 @@ def handle(path_components, data):
         # return HTTPStatus.OK, json.dumps(
         #     {'phr_id_b64': str(base64.b64encode("phir_id".encode('utf-8'))),
         #      'keywords': ['this', 'is', 'sample']})
+
+    elif path_components[0] == "entries":
+        print(data)
+        # TODO: Store the entries on blockchain by sending them to the
+        #  blockchain node
+
+        # Decode the entries and add to transaction list
+        for key_b64, val_b64 in data['entries_b64'].items():
+            key_hex = TXN_NAMESPACE + base64.b64decode(key_b64.encode(
+                'utf-8')).hex()
+            print(len(key_hex), key_hex)
+            val = base64.b64decode(val_b64.encode('utf-8'))
+            bc.add_transaction(key_hex, val)
+
+        # submit transactions to blockchain validator
+        res = bc.submit_transactions(config.batches_url)
+
+
+        return HTTPStatus.OK, None
