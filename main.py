@@ -6,22 +6,24 @@ import shelve
 import cbor2
 
 import config
+import keys
 import util
-from client_keys import master_key
+from keys import master_key
 from config import current_head_store_path
 import requests
 from util import hash, encrypt
 import logging
 
 
-def gen_entries(keywords, fid) -> dict:
+def gen_entries(keywords, fid, enc_key) -> dict:
     """
-    :param keywords: list:
-    :param fid: bytes:
+    :param keywords: list
+    :param fid: bytes
+    :param enc_key: bytes
     :return:
     """
     secure_index = dict()
-    iv = os.urandom(16)
+    nonce = os.urandom(12)
     for w in keywords:
         kw = hash(master_key, w.encode(encoding='utf-8'))
         addr = hash(kw, fid, b'0')
@@ -39,10 +41,11 @@ def gen_entries(keywords, fid) -> dict:
                 prev_addr = hash(kw, prev_fid, b'0') # 32 bytes
                 prev_key = hash(kw, prev_fid, b'1') # 32 bytes
 
-            # enc_val = encrypt(key, iv, prev_addr + prev_key + fid + iv)
-            enc_val = encrypt(key, iv, cbor2.dumps([prev_addr, prev_key, fid]))
+            # TODO: use authenticated encryption here
+            enc_val = encrypt(key, nonce, cbor2.dumps([prev_addr, prev_key, fid,
+                                                    enc_key]))
             # An entry in secure index
-            secure_index[addr] = cbor2.dumps([enc_val, iv])
+            secure_index[addr] = cbor2.dumps([enc_val, nonce])
 
             # Update the current head store
             store[w] = fid
@@ -59,36 +62,45 @@ def request_phr(phr_gen_url, entries_url, doc_id, user_id, passwd):
     # network
 
     # TODO: encrypt enc_key using public key of doctor
-    enc_key = util.hash(master_key, util.time_stamp())
-    enc_key_b64 = base64.b64encode(enc_key).decode('utf-8')
-    res = requests.post(phr_gen_url, json={'user_id': user_id,
-                                           'passwd': passwd,
-                                           'doc_id': doc_id,
-                                           'enc_key_b64': enc_key_b64})
+    document_enc_key = util.hash(master_key, util.time_stamp())
+
+    enc_data = util.encrypt_obj(
+        keys.hs_public_key(),
+        {
+            'user_id': user_id,
+            'passwd_hash': util.hash(passwd.encode('utf-8')),
+            'doc_id': doc_id,
+            'document_enc_key': document_enc_key
+        }
+    )
+
+    res = requests.post(phr_gen_url, data=enc_data)
 
     if res.status_code == requests.codes.ok:
-        data = res.json()
+        data = util.decrypt_obj(keys.private_key(), res.content)
         phr_id = base64.b64decode(data['phr_id_b64'].encode('utf-8'))
         keywords = data['keywords']
 
         print(data)
 
         # generate the encrypted entries
-        entries = gen_entries(keywords, phr_id)
+        entries = gen_entries(keywords, phr_id, document_enc_key)
 
         print(entries)
-        # Convert the entries to base64 format to send over network
-        entries_b64 = dict()
-        for key, val in entries.items():
-            key_b64 = base64.b64encode(key).decode('utf-8')
-            val_b64 = base64.b64encode(val).decode('utf-8')
-            entries_b64[key_b64] = val_b64
+
+        # encrypt the data to be sent
+        enc_data = util.encrypt_obj(
+            keys.hs_public_key(),
+            {
+                'user_id': user_id,
+                'passwd_hash': util.hash(passwd.encode('utf-8')),
+                'doc_id': doc_id,
+                'entries': entries
+            }
+        )
 
         # send the entries to HS
-        res = requests.post(entries_url, json={'user_id': user_id,
-                                               'passwd': passwd,
-                                               'doc_id': doc_id,
-                                               'entries_b64': entries_b64})
+        res = requests.post(entries_url, data=enc_data)
 
         if res == requests.codes.ok:
             print("entries submitted successfully")
@@ -109,14 +121,19 @@ def gen_trapdoor(w):
 
 
 def search(w):
-    trapdoor_b64 = util.bytes_to_base64(gen_trapdoor(w))
-    res = requests.post(config.search_url, json={'trapdoor_b64': trapdoor_b64})
+    enc_data = util.encrypt_obj(
+        keys.hs_public_key(),
+        {
+            'sender_pub_key': keys.public_key_sz(),
+            'trapdoor': gen_trapdoor(w)
+        }
+    )
+    res = requests.post(config.search_url, data=enc_data)
 
     if res.status_code == requests.codes.ok:
         logging.info("search request successfull")
-        fid_list = res.json()['fid_list']
-        for fid_b64 in fid_list:
-            fid = util.b64_to_bytes(fid_b64)
+        fid_list = util.decrypt_obj(keys.private_key(), res.content)['fid_list']
+        for fid in fid_list:
             print(fid)
     else:
         logging.error("search request failed, status code " +
@@ -132,8 +149,16 @@ def register(registration_url, user_id, passwd):
     # user_id_b64 = base64.b64encode(user_id.encode('utf-8'))
     # passwd_b64 = base64.b64encode(passwd.encode('utf-8'))
 
-    res = requests.post(registration_url, json={'user_id': user_id,
-                                                'passwd': passwd})
+    enc_data_b64 = util.encrypt_obj(
+        keys.hs_public_key(),
+        {
+            'user_id': user_id,
+            'passwd_hash': util.hash(passwd.encode('utf-8')),
+            'pub_key': keys.public_key_sz().decode('utf-8')
+        }
+    )
+
+    res = requests.post(registration_url, data=enc_data_b64)
 
     if res.status_code == requests.codes.ok:
         logging.info('Registration Successful')
@@ -156,11 +181,11 @@ def get_doc_ids(doc_ids_url, user_id, passwd):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    keywords = ['hello', 'this', 'is', 'a', 'demo']
+    # keywords = ['hello', 'this', 'is', 'a', 'demo']
     # print(gen_entries(keywords, b'file1'))
 
-    # register(config.hs_registration_url, 'abhishek', 'bisht')
-    # request_phr(config.phr_gen_url, config.entries_url, 'doctor1',
-    #             'abhishek', 'bisht')
-    search('some')
+    # register(config.hs_registration_url, 'user2', '1234')
+    request_phr(config.phr_gen_url, config.entries_url, 'doctor1',
+                'user2', '1234')
+    # search('some')
 

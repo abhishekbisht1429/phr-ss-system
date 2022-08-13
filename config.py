@@ -12,5 +12,7 @@ doc_ids_url = hs_base_url + '/' + hs_urls['doc_ids']
 
 search_url = hs_base_url + '/' + hs_urls['search']
 
-master_key_path = config['path']['master_key']
-current_head_store_path = config['path']['current_head_store']
+_path = config['path']
+keystore_path = _path['keystore']
+current_head_store_path = _path['current_head_store']
+hs_public_key_path = _path['hs_public_key']
