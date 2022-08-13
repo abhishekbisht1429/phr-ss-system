@@ -8,6 +8,8 @@ import logging
 from handler import external_request_handler, patient_request_handler, \
     doctor_request_handler
 
+import keys
+
 
 class HSRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -34,7 +36,7 @@ class HSRequestHandler(BaseHTTPRequestHandler):
 
         data = None
         if content_len > 0:
-            data = json.loads(self.rfile.read(content_len))
+            data = self.rfile.read(content_len)
 
         res_code = None
         if path_components[1] == "patient":
@@ -46,13 +48,14 @@ class HSRequestHandler(BaseHTTPRequestHandler):
         elif path_components[1] == "doctor":
             res_code, data = doctor_request_handler.handle(path_components[2:],
                                                            data)
+            data = data.encode() # internal communication happens on json
 
         # return response to the server
         if res_code is not None:
             self.send_response(res_code, self.responses[res_code][0])
             self.end_headers()
             if data is not None:
-                self.wfile.write(data.encode())
+                self.wfile.write(data)
         else:
             self.send_error(404)
             self.end_headers()
