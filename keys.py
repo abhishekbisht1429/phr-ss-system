@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 import constants
-from config import keystore_path
+from config import keystore_path, hs_pub_key_path
 
 with shelve.open(keystore_path) as store:
     # Generate or Load EC public private key pairs
@@ -38,6 +38,13 @@ with shelve.open(keystore_path) as store:
     _ec_public_key_sz = store[constants.STORE_KEY_EC_PUBLIC]
 
 
+# Load the hospital public key
+with open(hs_pub_key_path, 'r') as hs_public_key_file:
+    _hs_public_key = serialization.load_pem_public_key(
+        hs_public_key_file.read().encode('utf-8')
+    )
+
+
 def public_key():
     return _ec_public_key
 
@@ -48,3 +55,7 @@ def public_key_sz():
 
 def private_key():
     return _ec_private_key
+
+
+def hs_public_key():
+    return _hs_public_key
