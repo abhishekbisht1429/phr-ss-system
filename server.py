@@ -48,7 +48,7 @@ class HSRequestHandler(BaseHTTPRequestHandler):
         elif path_components[1] == "doctor":
             res_code, data = doctor_request_handler.handle(path_components[2:],
                                                            data)
-            data = data.encode() # internal communication happens on json
+            # data = data.encode() # internal communication happens on json
 
         # return response to the server
         if res_code is not None:
