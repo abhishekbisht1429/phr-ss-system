@@ -13,3 +13,4 @@ hs_pub_key_path = _path['hs_pub_key']
 
 _url = config['url']
 registration_url = _url['registration']
+ipfs_add_url = _url['ipfs_add']

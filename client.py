@@ -23,4 +23,4 @@ def register(doc_id, passwd, url):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    register('doc1', '1234', 'http://localhost:9000')
+    register('doc1', '1234', 'http://localhost:9001')

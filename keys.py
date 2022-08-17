@@ -37,7 +37,6 @@ with shelve.open(keystore_path) as store:
 
     _ec_public_key_sz = store[constants.STORE_KEY_EC_PUBLIC]
 
-
 # Load the hospital public key
 with open(hs_pub_key_path, 'r') as hs_public_key_file:
     _hs_public_key = serialization.load_pem_public_key(
@@ -59,3 +58,7 @@ def private_key():
 
 def hs_public_key():
     return _hs_public_key
+
+
+if __name__ == '__main__':
+    print(_ec_public_key_sz.decode('utf-8'))

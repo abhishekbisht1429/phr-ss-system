@@ -35,7 +35,7 @@ class HSRequestHandler(BaseHTTPRequestHandler):
 
         data = None
         if content_len > 0:
-            data = json.loads(self.rfile.read(content_len))
+            data = self.rfile.read(content_len)
 
         res_code = None
         if path_components[1] == "hs":
@@ -47,7 +47,7 @@ class HSRequestHandler(BaseHTTPRequestHandler):
             self.send_response(res_code, self.responses[res_code][0])
             self.end_headers()
             if data is not None:
-                self.wfile.write(data.encode())
+                self.wfile.write(data)
         else:
             self.send_error(404)
             self.end_headers()

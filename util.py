@@ -3,8 +3,9 @@ import hashlib
 import os
 
 import cbor2
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes, serialization, padding
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESOCB3
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
@@ -78,10 +79,90 @@ def encrypt_obj(receiver_pub_key, obj):
     :param obj: 
     :return: 
     """
-    return base64.b64encode(ecies_encryption(receiver_pub_key, cbor2.dumps(obj)))
+    return base64.b64encode(
+        ecies_encryption(receiver_pub_key, cbor2.dumps(obj)))
 
 
 def decrypt_obj(priv_key, enc_data_b64):
     return cbor2.loads(ecies_decryption(priv_key, base64.b64decode(
         enc_data_b64)))
 
+
+# def pad(size, data) -> bytes:
+#     """
+#     :param size: int
+#     :param data: bytes
+#     :return:
+#     """
+#     padder = padding.PKCS7(size * 8).padder()
+#     return padder.update(data) + padder.finalize()
+#
+#
+# def unpad(size, data) -> bytes:
+#     """
+#     :param size: int
+#     :param data: bytes
+#     :return:
+#     """
+#     unpadder = padding.PKCS7(size * 8).unpadder()
+#     return unpadder.update(data) + unpadder.finalize()
+#
+#
+# def encrypt(key, iv, data) -> bytes:
+#     """
+#     Encrypts data using 'key' as key and 'iv' as initialization vector.
+#     :param key: bytes:
+#     :param data: bytes:
+#     :return:
+#     """
+#     cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+#     encryptor = cipher.encryptor()
+#
+#     padded_data = pad(len(key), data)
+#     return encryptor.update(padded_data) + encryptor.finalize()
+#
+#
+# def decrypt(key, iv, enc_data) -> bytes:
+#     cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+#     decryptor = cipher.decryptor()
+#
+#     dec_data = decryptor.update(enc_data) + decryptor.finalize()
+#
+#     return unpad(len(key), dec_data)
+#     # return AESOCB3(key).decrypt(iv, enc_data, None)
+
+
+def encrypt_file(inp_path, out_path, key):
+    iv = os.urandom((algorithms.AES(key).block_size)//8)
+    cipher = Cipher(algorithms.AES(key), modes.OFB(iv))
+    encryptor = cipher.encryptor()
+
+    with open(inp_path, 'rb') as inp_file, open(out_path, 'wb') as out_file:
+        out_file.write(iv)
+        buf_size = 1024
+        while True:
+            data = inp_file.read(buf_size)
+            if not data:
+                out_file.write(encryptor.finalize())
+                break
+            out_file.write(encryptor.update(data))
+
+
+def decrypt_file(inp_path, out_path, key):
+    with open(inp_path, 'rb') as inp_file, open(out_path, 'wb') as out_file:
+        iv = inp_file.read(algorithms.AES(key).block_size//8)
+        cipher = Cipher(algorithms.AES(key), modes.OFB(iv))
+        decryptor = cipher.decryptor()
+        buf_size = 1024
+        while True:
+            enc_data = inp_file.read(buf_size)
+            if not enc_data:
+                out_file.write(decryptor.finalize())
+                break
+            out_file.write(decryptor.update(enc_data))
+
+
+if __name__ == '__main__':
+    key = os.urandom(32)
+    encrypt_file('temp/user2', 'temp/user2_enc', key)
+    decrypt_file('temp/user2_enc', 'temp/user2_dec', key)

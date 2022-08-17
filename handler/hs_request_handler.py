@@ -3,7 +3,11 @@ import http
 import json
 import hashlib
 import tika
+from cryptography.hazmat.primitives import serialization
 from tika import parser
+
+import ipfs_client
+import keys
 import util
 
 tika.initVM()
@@ -33,7 +37,7 @@ def gen_phr(file_path):
     return phr
 
 
-def handle(path_components, data):
+def handle(path_components, raw_data):
     """
     :param path_components: list
     :param msg: dict
@@ -43,6 +47,7 @@ def handle(path_components, data):
         return
 
     if path_components[0] == "phr_gen":
+        data = util.decrypt_obj(keys.private_key(), raw_data)
         # TODO: emulate the process of generating a PHR and run keyword
         # extraction algorithm on the PHR to derive the keywords
 
@@ -67,13 +72,30 @@ def handle(path_components, data):
         #                                                     'with',
         #                                                     'extras']})
         user_id = data['user_id']
+        doc_enc_key = util.decrypt_obj(keys.private_key(), data['doc_enc_key'])
+        user_pub_key = serialization.load_pem_public_key(data['user_pub_key'])
 
+        # encrypt the phr
         file_path = './temp/' + user_id
-        phr_id = util.bytes_to_b64(util.hash(file_path.encode('utf-8')))
-        keywords = extract_keywords(file_path)
+        enc_file_path = './temp/encrypted_files' + user_id
+        util.encrypt_file(file_path, enc_file_path, doc_enc_key)
 
-        return http.HTTPStatus.OK, json.dumps({'phr_id_b64': phr_id,
-                                               'keywords': keywords})
+        # upload the phr to IPFS
+        status_code, data = ipfs_client.add(enc_file_path)
+        if status_code != http.HTTPStatus.OK:
+            return http.HTTPStatus.INTERNAL_SERVER_ERROR, None
+
+
+        # phr_id = util.bytes_to_b64(util.hash(file_path.encode('utf-8')))
+        phr_id = data['Hash'].encode('utf-8')
+
+        # Extract the keywords
+        keywords = extract_keywords(file_path)
+        res_data = util.encrypt_obj(user_pub_key, {
+            'phr_id': phr_id,
+            'keywords': keywords
+        })
+        return http.HTTPStatus.OK, res_data
 
 if __name__ == '__main__':
     print(extract_keywords('../temp/user4'))
