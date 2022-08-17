@@ -5,7 +5,7 @@ import sys
 from cryptography.hazmat.primitives import serialization
 
 import constants
-from config import keystore_path, hs_public_key_path
+from config import keystore_path, hs_public_key_path, doc_pub_key_path
 from cryptography.hazmat.primitives.asymmetric import ec
 import util
 
@@ -47,24 +47,15 @@ with shelve.open(keystore_path) as store:
 
     _ec_public_key_sz = store[constants.STORE_KEY_EC_PUBLIC]
 
-    # if STORE_KEY_EC_PRIVATE not in store:
-    #     _ec_private_key = ec.generate_private_key(ec.SECP256R1())
-    #     _ec_private_value = _ec_private_key.private_numbers().private_value
-    #
-    #     # save values in keystore
-    #     _ec_private_bytes = _ec_private_value.to_bytes(
-    #         util.byte_len(_ec_private_value), sys.byteorder)
-    #
-    #     store[STORE_KEY_EC_PRIVATE] = _ec_private_bytes
-    #
-    # _ec_private_bytes = store[STORE_KEY_EC_PRIVATE]
-    # _ec_private_value = int.from_bytes(_ec_private_bytes, sys.byteorder)
-    # _ec_private_key = ec.derive_private_key(_ec_private_value, ec.SECP256R1())
-
 # Load the hospital public key
 with open(hs_public_key_path, 'r') as hs_public_key_file:
     _hs_public_key = serialization.load_pem_public_key(
         hs_public_key_file.read().encode('utf-8')
+    )
+
+with open(doc_pub_key_path, 'r') as doc_pub_key_file:
+    _doc_public_key = serialization.load_pem_public_key(
+        doc_pub_key_file.read().encode('utf-8')
     )
 
 
@@ -82,3 +73,7 @@ def private_key():
 
 def hs_public_key():
     return _hs_public_key
+
+
+def doc_public_key():
+    return _doc_public_key

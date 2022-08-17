@@ -61,7 +61,6 @@ def request_phr(phr_gen_url, entries_url, doc_id, user_id, passwd):
     # convert the user_id and password into base64 encoding to send over the
     # network
 
-    # TODO: encrypt enc_key using public key of doctor
     document_enc_key = util.hash(master_key, util.time_stamp())
 
     enc_data = util.encrypt_obj(
@@ -70,7 +69,8 @@ def request_phr(phr_gen_url, entries_url, doc_id, user_id, passwd):
             'user_id': user_id,
             'passwd_hash': util.hash(passwd.encode('utf-8')),
             'doc_id': doc_id,
-            'document_enc_key': document_enc_key
+            'document_enc_key': util.encrypt_obj(keys.doc_public_key(),
+                                                 document_enc_key)
         }
     )
 
@@ -78,7 +78,7 @@ def request_phr(phr_gen_url, entries_url, doc_id, user_id, passwd):
 
     if res.status_code == requests.codes.ok:
         data = util.decrypt_obj(keys.private_key(), res.content)
-        phr_id = base64.b64decode(data['phr_id_b64'].encode('utf-8'))
+        phr_id = data['phr_id']
         keywords = data['keywords']
 
         print(data)
@@ -184,8 +184,8 @@ if __name__ == '__main__':
     # keywords = ['hello', 'this', 'is', 'a', 'demo']
     # print(gen_entries(keywords, b'file1'))
 
-    # register(config.hs_registration_url, 'user2', '1234')
-    request_phr(config.phr_gen_url, config.entries_url, 'doctor1',
-                'user2', '1234')
+    # register(config.hs_registration_url, 'user1', '1234')
+    # request_phr(config.phr_gen_url, config.entries_url, 'doc1',
+                # 'user2', '1234')
     # search('some')
 
