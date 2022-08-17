@@ -15,3 +15,6 @@ server_port = _server['port']
 _blockchain_node = config['url']['blockchain_node']
 batches_url = _blockchain_node['batches']
 state_url = _blockchain_node['state']
+
+_doctor_device = config['url']['doctor']
+phr_gen_seg = _doctor_device['phr_gen_seg']

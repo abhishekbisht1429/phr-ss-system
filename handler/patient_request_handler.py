@@ -22,7 +22,7 @@ from constants import TXN_NAMESPACE
 def __authenticated(user_id, passwd_hash):
     with shelve.open(config.user_db_path) as udb:
         if user_id in udb and udb[user_id][1] == passwd_hash:
-            return serialization.load_pem_public_key(udb[user_id][0])
+            return udb[user_id][0]
 
 
 def __decrypt(enc_data):
@@ -56,7 +56,8 @@ def handle(path_components, raw_data):
         return HTTPStatus.OK, None
     elif path_components[0] == "phr_gen":
         data = util.decrypt_obj(keys.server_ec_priv_key(), raw_data)
-        user_pub_key = __authenticated(data['user_id'], data['passwd_hash'])
+        user_pub_key_sz = __authenticated(data['user_id'], data['passwd_hash'])
+        user_pub_key = serialization.load_pem_public_key(user_pub_key_sz)
         if not user_pub_key:
             return HTTPStatus.BAD_REQUEST, None
 
@@ -64,22 +65,23 @@ def handle(path_components, raw_data):
 
         doc_id = data['doc_id']
 
-        # TODO: Uncomment the lines below and remove the temp fix
-        # with shelve.open(config.doc_db_path) as doc_db:
-        #     if doc_id not in doc_db:
-        #         return http.HTTPStatus.BAD_REQUEST, None
-        #
-        #     doc_url = doc_db[doc_id]
-        doc_url = 'http://localhost:9001/hs/phr_gen'
+        with shelve.open(config.doc_db_path) as doc_db:
+            if doc_id not in doc_db:
+                return http.HTTPStatus.BAD_REQUEST, None
+            doc_url = doc_db[doc_id]['url'] + '/' + config.phr_gen_seg
+            doc_pub_key = serialization.load_pem_public_key(doc_db[doc_id][
+                                                                'pub_key'])
+        print(doc_url)
 
-        res = requests.post(doc_url, json={
+        res = requests.post(doc_url, data=util.encrypt_obj(doc_pub_key, {
             'user_id': data['user_id'],
-            'enc_key_b64': util.bytes_to_b64s(data['document_enc_key'])
-        })
+            'user_pub_key': user_pub_key_sz,
+            'doc_enc_key': data['document_enc_key']
+        }))
 
-        enc_res = util.encrypt_obj(user_pub_key, res.json())
+        # enc_res = util.encrypt_obj(user_pub_key, res.json())
         if res.status_code == requests.codes.ok:
-            return HTTPStatus.OK, enc_res
+            return HTTPStatus.OK, res.content
         else:
             return HTTPStatus.INTERNAL_SERVER_ERROR, None
 
