@@ -1,4 +1,6 @@
+import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from threading import Thread
 
 import config
 import os.path
@@ -7,8 +9,9 @@ import json
 import logging
 from handler import external_request_handler, patient_request_handler, \
     doctor_request_handler
-
 import keys
+import blockchain_event_listener as bel
+import signal
 
 
 class HSRequestHandler(BaseHTTPRequestHandler):
@@ -44,7 +47,7 @@ class HSRequestHandler(BaseHTTPRequestHandler):
                                                             data)
         elif path_components[1] == "external":
             res_code, data = external_request_handler.handle(
-                path_components[2:], data)
+                path_components[2:], data, search_event_listener)
         elif path_components[1] == "doctor":
             res_code, data = doctor_request_handler.handle(path_components[2:],
                                                            data)
@@ -61,6 +64,15 @@ class HSRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
+def sigint_handler(signum, frame):
+    logging.info("Shutting Down Server")
+    search_event_listener.stop_listening()
+    server.shutdown()
+    # sys.exit()
+
+
+signal.signal(signal.SIGINT, sigint_handler)
+
 if __name__ == '__main__':
     # if len(sys.argv) < 3:
     #     print("Invalid number of args")
@@ -70,4 +82,17 @@ if __name__ == '__main__':
     addr = (config.server_ip, config.server_port)
     server = HTTPServer(addr, HSRequestHandler)
     logging.info("serving requests from %s", addr)
-    server.serve_forever()
+
+    # Start event listener
+    search_event_listener = bel.SearchEventListener(config.validator_url)
+    event_thread = Thread(target=search_event_listener.listen)
+    event_thread.start()
+
+    # start server
+    server_thread = Thread(target=server.serve_forever)
+    server_thread.start()
+
+    event_thread.join()
+    server_thread.join()
+    print('exiting')
+    # server.serve_forever()

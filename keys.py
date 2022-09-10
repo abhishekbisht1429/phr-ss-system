@@ -39,6 +39,9 @@ with shelve.open(keystore_path) as store:
         store[constants.STORE_KEY_EC_PUBLIC]
     )
 
+    _serialized_public_key = store[constants.STORE_KEY_EC_PUBLIC]
+    _serialized_private_key = store[constants.STORE_KEY_EC_PRIVATE]
+
 
 def server_ec_pub_key():
     return _ec_public_key
@@ -46,4 +49,8 @@ def server_ec_pub_key():
 
 def server_ec_priv_key():
     return _ec_private_key
+
+
+def serialized_pub_key():
+    return _serialized_public_key
 

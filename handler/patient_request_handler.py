@@ -17,7 +17,8 @@ import blockchain_client as bc
 import config
 import keys
 import util
-from constants import TXN_NAMESPACE
+from constants import TXN_NAMESPACE, ACTION_SET
+
 
 def __authenticated(user_id, passwd_hash):
     with shelve.open(config.user_db_path) as udb:
@@ -99,9 +100,15 @@ def handle(path_components, raw_data):
         for key, val in data['entries'].items():
             key_hex = TXN_NAMESPACE + key.hex()
             print(len(key_hex), key_hex)
-            bc.add_transaction(key_hex, val)
+            bc.add_transaction(action=ACTION_SET,
+                               inputs=[TXN_NAMESPACE],
+                               outputs=[TXN_NAMESPACE],
+                               data=(key_hex, val))
 
         # submit transactions to blockchain validator
-        res = bc.submit_transactions(config.batches_url)
+        accepted, info = bc.submit_transactions(config.batches_url)
 
-        return HTTPStatus.OK, None
+        if accepted:
+            return HTTPStatus.OK, None
+        else:
+            return HTTPStatus.INTERNAL_SERVER_ERROR, None

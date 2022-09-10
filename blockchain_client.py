@@ -50,7 +50,7 @@ def submit_transactions(url):
         )
     except requests.Timeout:
         print('Timed out')
-        return False
+        return False, None
     send_time = time.time_ns()
 
     # clear the transaction list
@@ -64,21 +64,21 @@ def submit_transactions(url):
         #     batch_id = status_resp.json()['data'][0]['id']
         #     f[batch_id] = send_time
         #     print(f[batch_id])
-        return True
+        return True, resp.json()['link']
     else:
         print("rejected")
         print(resp.json())
-        return False
+        return False, None
 
 
-def add_transaction(addr, data):
-    payload_bytes = cbor2.dumps([ACTION_SET, addr, data])
+def add_transaction(action, inputs, outputs, data):
+    payload_bytes = cbor2.dumps([action, data])
 
     txn_header_bytes = TransactionHeader(
         family_name=TXN_FAMILY_NAME,
         family_version=TXN_FAMILY_VERSION,
-        inputs=[addr],
-        outputs=[addr],
+        inputs=inputs,
+        outputs=outputs,
         signer_public_key=_signer.get_public_key().as_hex(),
         batcher_public_key=_signer.get_public_key().as_hex(),
         dependencies=[],
