@@ -1,0 +1,4 @@
+.idea
+venv
+mount_binds
+compose.yml

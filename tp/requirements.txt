@@ -1,0 +1,4 @@
+sawtooth_sdk
+cbor2
+protobuf==3.19.04
+cryptography
