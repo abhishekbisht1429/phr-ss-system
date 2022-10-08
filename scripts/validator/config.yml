@@ -1,0 +1,22 @@
+path:
+  validator:
+    key_dir: '/etc/sawtooth/keys'
+    config_file: '/etc/sawtooth/validator.toml'
+  user:
+    key_dir: '/user_keys'
+
+address:
+  server:
+    ip: 'localhost'
+    port: 8000
+  kds:
+    ip: '127.0.0.1'
+    port: 9000
+
+url:
+  key_distribution_server:
+    submit: 'http://localhost:9000/submit'
+
+key:
+  network_pk: 'wFMwoOt>yFqI/ek.G[tfMMILHWw#vXB[Sv}>l>i)'
+  network_sk: 'r&oJ5aQDj4+V]p2:Lz70Eu0x#m%IwzBdP(}&hWM*'

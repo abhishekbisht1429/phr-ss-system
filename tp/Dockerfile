@@ -17,7 +17,7 @@ RUN python3 install-pip3-ubuntu.py
 #RUN python3 -m pip install -U pip
 #RUN python3 -m pip install -U setuptools
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install -r requirements.txt.txt
 
 
 #RUN git clone --depth 1 --branch v1.2.5 https://github.com/hyperledger/sawtooth-sdk-python.git

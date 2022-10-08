@@ -1,11 +1,14 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]; then
-  echo "rest api id required"
+if [ $# -lt 4 ]; then
+  echo "required - <rest_api id> <host_ip> <validator port> <rest api port>"
   exit 1
 fi
 
 id=$1
+host_ip=$2
+validator_port=$3
+rest_api_port=$4
 
 # Copy the config file to appropriate dir
 if [[ -e /private/rest_api.toml ]]; then
@@ -13,5 +16,5 @@ if [[ -e /private/rest_api.toml ]]; then
 fi
 
 sawtooth-rest-api -v \
-  --connect tcp://thesis-validator-"$id":4004 \
-  --bind thesis-rest-api-"$id":8008
+  --connect tcp://"$host_ip":"$validator_port" \
+  --bind "$host_ip":"$rest_api_port"
