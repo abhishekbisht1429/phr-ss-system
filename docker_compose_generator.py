@@ -84,6 +84,7 @@ def generate(host_id, n, host_ip, gateway_ip):
             'depends_on': [validator_container_name],
             'command': 'bash /shared/scripts/start_rest_api.sh '
                        + str(i) + ' '
+                       + str(host_ip) + ' '
                        + str(ports['validator_component']) + ' '
                        + str(ports['rest_api']),
             'network_mode': 'host'
