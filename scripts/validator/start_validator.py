@@ -45,7 +45,8 @@ class NotificationReceiver:
         self._port = port
         self._tcp_server = socketserver.TCPServer(
             (ip, port),
-            NotificationReceiver.TCPHandler
+            NotificationReceiver.TCPHandler,
+            bind_and_activate=False
         )
         self._lock = threading.Lock()
         self._is_running = False
@@ -68,6 +69,8 @@ class NotificationReceiver:
                         notif_server._tcp_server.handle_request()
                         logging.debug("Request Handled")
 
+            self._tcp_server.server_bind()
+            self._tcp_server.server_activate()
             self._is_running = True
             threading.Thread(target=f, args=(self,)).start()
             logging.info("Server started")
@@ -85,6 +88,7 @@ class NotificationReceiver:
                 # server already closed
                 logging.debug(str(e))
             logging.info("Server stopped")
+            self._tcp_server.server_close()
 
     def get_data(self):
         # acquire the lock
@@ -216,7 +220,6 @@ def main(args):
     # Prepare the notification receiver
     notif_receiver = NotificationReceiver(host_ip, network_port)
     with notif_receiver:
-        # notif_receiver.start()
         generate_keys()
 
         # retrieve the public key
@@ -243,13 +246,6 @@ def main(args):
         node_info_list = notif_receiver.get_data()
         logging.debug("Wait over")
         logging.debug("node_info_list: " + str(node_info_list))
-    # notif_receiver.stop()
-
-    # Wait for the initial server to shut down
-    logging.debug("Waiting for intial server to shut down")
-    while notif_receiver.is_running():
-        time.sleep(0.1)
-    logging.debug("wait over")
 
     # start the validator
     start_validator(host_ip, network_port, component_port, consensus_port,
