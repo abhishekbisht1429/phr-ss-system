@@ -166,8 +166,8 @@ def create_genesis_block(node_info_list):
 def generate_validator_config(host_ip, network_port, component_port,
                               consensus_port, node_info_list):
     validator_config = dict()
-    network_endpoint = 'network:tcp://' + host_ip + ':' \
-                       + str(network_port)
+    endpoint = 'tcp://' + host_ip + ':' + str(network_port)
+    network_endpoint = 'network:'+endpoint
     component_endpoint = 'component:tcp://' + host_ip + ':' \
                          + str(component_port)
     consensus_endpoint = 'consensus:tcp://' + host_ip + ':' \
@@ -181,8 +181,9 @@ def generate_validator_config(host_ip, network_port, component_port,
     for node_info in node_info_list:
         peer_list.append(
             'tcp://' + node_info['ip'] + ':' + str(node_info['port']))
+    logging.debug(str(peer_list))
 
-    validator_config['endpoint'] = network_endpoint
+    validator_config['endpoint'] = endpoint
     validator_config['peering'] = 'static'
     validator_config['peers'] = peer_list
     validator_config['scheduler'] = 'parallel'
