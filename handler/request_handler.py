@@ -7,34 +7,9 @@ from threading import Thread
 import socket
 import pickle
 
-node_info_list = list()
-cv = threading.Condition()
 
-def monitor_list():
-    while True:
-        with cv:
-            # wait till required number of node_info have arrived
-            cv.wait()
 
-            # send the node info list to all the nodes
-            for i, node_info in enumerate(node_info_list):
-                logging.debug('node info ' + str(node_info))
-                sock = socket.create_connection(
-                    (node_info['gateway_ip'], node_info['notif_receiver_port'])
-                )
-                data = pickle.dumps({'id': i,
-                        'node_info_list': node_info_list})
-                data_len = len(data)
-                sock.send(data_len.to_bytes(4, byteorder='big'))
-                sock.send(data)
-                sock.close()
-            node_info_list.clear()
-
-    # send the node info list to all the nodes
-monitor_thread = Thread(target=monitor_list)
-monitor_thread.start()
-
-def handle(client_address, path_components, raw_data):
+def handle(path_components, raw_data, node_info_list, distribute_condition):
     """
     :param path_components: list
     :param msg: dict
@@ -45,7 +20,7 @@ def handle(client_address, path_components, raw_data):
 
     if path_components[0] == "submit":
         data = util.deserialize_obj(raw_data)
-        with cv:
+        with distribute_condition:
             node_info_list.append({
                 'gateway_ip': data['gateway_ip'],
                 'validator_port': data['validator_port'],
@@ -53,7 +28,7 @@ def handle(client_address, path_components, raw_data):
                 'notif_receiver_port': data['notif_receiver_port']
             })
             if len(node_info_list) == config.total_nodes:
-                cv.notify()
+                distribute_condition.notify_all()
         return HTTPStatus.OK, None
     else:
         return HTTPStatus.NOT_FOUND, None

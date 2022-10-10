@@ -1,15 +1,41 @@
 import sys
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from threading import Thread
-
+import pickle
 import config
 import os.path
 import urllib.parse as parse
-import json
+import threading
 import logging
+import socket
 import signal
 
 from handler import request_handler
+
+node_info_list = list()
+continue_distribution = True
+distribution_condition = threading.Condition()
+
+def distribute_info():
+    while continue_distribution:
+        with distribution_condition:
+            # wait till required number of node_info have arrived
+            distribution_condition.wait()
+
+            # send the node info list to all the nodes
+            for i, node_info in enumerate(node_info_list):
+                logging.debug('node info ' + str(node_info))
+                sock = socket.create_connection(
+                    (node_info['gateway_ip'], node_info['notif_receiver_port'])
+                )
+                data = pickle.dumps({'id': i,
+                                     'node_info_list': node_info_list})
+                data_len = len(data)
+                sock.send(data_len.to_bytes(4, byteorder='big'))
+                sock.send(data)
+                sock.close()
+            node_info_list.clear()
+    logging.info("Distribution Thread exiting")
 
 
 class HSRequestHandler(BaseHTTPRequestHandler):
@@ -40,9 +66,12 @@ class HSRequestHandler(BaseHTTPRequestHandler):
             data = self.rfile.read(content_len)
 
         logging.info("received request from : " + str(self.client_address))
-        res_code, data = request_handler.handle(self.client_address,
-                                                path_components[1:],
-                                                            data)
+        res_code, data = request_handler.handle(
+            path_components[1:],
+            data,
+            node_info_list,
+            distribution_condition
+        )
 
         # return response to the server
         if res_code is not None:
@@ -79,8 +108,13 @@ class HSRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
-
 def sigint_handler(signum, frame):
+    logging.info("Stopping distribution thread")
+    with distribution_condition:
+        global continue_distribution
+        continue_distribution = False
+        distribution_condition.notify_all()
+
     logging.info("Shutting Down Server")
     server.shutdown()
     # sys.exit()
@@ -94,6 +128,11 @@ if __name__ == '__main__':
     #     exit(1)
     # addr = (sys.argv[1], int(sys.argv[2]))
     logging.basicConfig(level=logging.DEBUG)
+
+    # distribution thread
+    distribution_thread = Thread(target=distribute_info)
+    distribution_thread.start()
+
     addr = (config.server_ip, config.server_port)
     server = ThreadingHTTPServer(addr, HSRequestHandler)
     logging.info("serving requests from %s", addr)
