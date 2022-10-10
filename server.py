@@ -39,7 +39,9 @@ class HSRequestHandler(BaseHTTPRequestHandler):
         if content_len > 0:
             data = self.rfile.read(content_len)
 
-        res_code, data = request_handler.handle(path_components[1:],
+        logging.info("received request from : " + str(self.client_address))
+        res_code, data = request_handler.handle(self.client_address,
+                                                path_components[1:],
                                                             data)
 
         # return response to the server
