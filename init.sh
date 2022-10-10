@@ -1,14 +1,13 @@
 #!/bin/bash
 
-if [[ $# -lt 4 ]]; then
-  echo "Required argument - <host id> <number of nodes> <host ip> <gateway ip>"
+if [[ $# -lt 3 ]]; then
+  echo "Required argument - <host id> <number of nodes> <gateway ip>"
   exit 1
 fi
 
 host_id=$1
 n=$2
-host_ip=$3
-gateway_ip=$4
+gateway_ip=$3
 # Create scripts dirs for validator
 if [[ ! -d "./mount_binds/validator/shared/scripts" ]]; then
   mkdir -p "./mount_binds/validator/shared/scripts"
@@ -70,8 +69,8 @@ cp ./scripts/rest_api/start_rest_api.sh \
 #cp ./scripts/influxdb/start_influxdb.sh ./mount_binds/influxdb
 
 
-python3 docker_compose_generator.py "$host_id" "$n" "$host_ip" "$gateway_ip"
+python3 docker_compose_generator.py "$host_id" "$n" "$gateway_ip"
 
 docker-compose down --remove-orphans
-
+docker container prune -y
 docker-compose up

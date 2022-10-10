@@ -21,11 +21,12 @@ def generate_ports(host_id, node_index):
     ports["validator_consensus"] = first_node_port + 2
 
     ports['rest_api'] = first_node_port + 3
+    ports['notif_receiver'] = first_node_port + 4
 
     return ports
 
 
-def generate(host_id, n, host_ip, gateway_ip):
+def generate(host_id, n, gateway_ip):
     data = dict()
     data['version'] = '3.6'
 
@@ -50,12 +51,21 @@ def generate(host_id, n, host_ip, gateway_ip):
                                  "shared") + ":" + os.path.join("/", "shared")
                 ],
             'command': 'bash /shared/scripts/init_validator.sh '
-                       + host_ip + ' '
+                       + validator_container_name + ' '
                        + gateway_ip + ' '
                        + str(ports['validator_network']) + ' '
                        + str(ports['validator_component']) + ' '
-                       + str(ports['validator_consensus']),
-            'network_mode': 'host'
+                       + str(ports['validator_consensus']) + ' '
+                       + str(ports['notif_receiver']),
+            # 'network_mode': 'host'
+            'ports':
+                [
+                    str(ports['validator_network']) + ":"
+                    + str(ports['validator_network']),
+
+                    str(ports['notif_receiver']) + ":"
+                    + str(ports['notif_receiver'])
+                ]
         }
 
         # settings transaction processor
@@ -64,9 +74,9 @@ def generate(host_id, n, host_ip, gateway_ip):
             'container_name': settings_tp_container_name,
             'depends_on': [validator_container_name],
             'command': 'settings-tp -v -C tcp://'
-                       + host_ip + ':'
+                       + validator_container_name + ':'
                        + str(ports['validator_component']),
-            'network_mode': 'host'
+            # 'network_mode': 'host'
         }
 
         # rest api
@@ -83,11 +93,13 @@ def generate(host_id, n, host_ip, gateway_ip):
                 ],
             'depends_on': [validator_container_name],
             'command': 'bash /shared/scripts/start_rest_api.sh '
-                       + str(i) + ' '
-                       + str(host_ip) + ' '
+                       + rest_api_container_name + ' '
+                       + validator_container_name + ' '
                        + str(ports['validator_component']) + ' '
                        + str(ports['rest_api']),
-            'network_mode': 'host'
+            # 'network_mode': 'host'
+            'ports': [str(ports['rest_api']) + ":" + str(ports[
+                                                             'rest_api'])]
         }
 
         # consensus engine pbft
@@ -95,10 +107,10 @@ def generate(host_id, n, host_ip, gateway_ip):
             'image': 'hyperledger/sawtooth-pbft-engine',
             'container_name': consensus_engine_container_name,
             'command': 'pbft-engine -v --connect tcp://'
-                       + host_ip + ':'
+                       + validator_container_name + ':'
                        + str(ports['validator_consensus']),
             'depends_on': [validator_container_name],
-            'network_mode': 'host'
+            # 'network_mode': 'host'
         }
 
         # transaction processor
@@ -106,10 +118,10 @@ def generate(host_id, n, host_ip, gateway_ip):
             'image': 'thesis-tp',
             'container_name': tp_container_name,
             'command': 'python3 transaction_processor.py '
-                       'tcp://' + host_ip + ':'
+                       'tcp://' + validator_container_name + ':'
                        + str(ports['validator_component']),
             'depends_on': [validator_container_name],
-            'network_mode': 'host'
+            # 'network_mode': 'host'
         }
 
         services[validator_container_name] = validator
@@ -149,14 +161,13 @@ def generate(host_id, n, host_ip, gateway_ip):
 def main(args):
     host_id = int(args[0])
     n = int(args[1])
-    host_ip = args[2]
-    gateway_ip = args[3]
-    generate(host_id, n, host_ip, gateway_ip)
+    gateway_ip = args[2]
+    generate(host_id, n, gateway_ip)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        print('required - <host id> <number of nodes> <host_ip> <gateway ip>')
+    if len(sys.argv) < 4:
+        print('required - <host id> <number of nodes> <gateway ip>')
         exit(1)
 
     main(sys.argv[1:])

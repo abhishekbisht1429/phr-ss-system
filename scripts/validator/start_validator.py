@@ -28,17 +28,17 @@ class NotificationReceiver:
 
         def handle(self) -> None:
             logging.debug("handling request from" + str(self.client_address))
-            if self.client_address[0] == config.kds_ip:
-                data_len = int.from_bytes(self.rfile.read(4),
-                                          byteorder='big')
-                logging.debug("data_len: " + str(data_len))
-                with self.cv:
-                    self.data_queue.put(pickle.loads(self.rfile.read(data_len)))
-                    # notify the main thread if it is waiting
-                    logging.debug("Notifying the main Thread")
-                    self.cv.notify()
-            else:
-                self.wfile.close()
+            # if self.client_address[0] == config.kds_ip:
+            data_len = int.from_bytes(self.rfile.read(4),
+                                      byteorder='big')
+            logging.debug("data_len: " + str(data_len))
+            with self.cv:
+                self.data_queue.put(pickle.loads(self.rfile.read(data_len)))
+                # notify the main thread if it is waiting
+                logging.debug("Notifying the main Thread")
+                self.cv.notify()
+            # else:
+            #     self.wfile.close()
 
     def __init__(self, ip, port):
         self._ip = ip
@@ -61,7 +61,8 @@ class NotificationReceiver:
         with self._lock:
             if self._is_running:
                 raise Exception("Server already running")
-            logging.info("Starting server")
+            logging.info("Starting server at " + str(self._ip) + ':' + str(
+                self._port))
 
             def f(notif_server):
                 with notif_server._tcp_server:
@@ -163,14 +164,15 @@ def create_genesis_block(node_info_list):
         exit(1)
 
 
-def generate_validator_config(host_ip, network_port, component_port,
-                              consensus_port, node_info_list):
+def generate_validator_config(validator_container_name, network_port,
+                              component_port,
+                              consensus_port, node_info_list, node_id,
+                              gateway_ip):
     validator_config = dict()
-    endpoint = 'tcp://' + host_ip + ':' + str(network_port)
-    network_endpoint = 'network:'+endpoint
-    component_endpoint = 'component:tcp://' + host_ip + ':' \
+    network_endpoint = 'network:tcp://' + 'eth0' + ':' + str(network_port)
+    component_endpoint = 'component:tcp://eth0:' \
                          + str(component_port)
-    consensus_endpoint = 'consensus:tcp://' + host_ip + ':' \
+    consensus_endpoint = 'consensus:tcp://eth0:' \
                          + str(consensus_port)
     validator_config['bind'] = [
         network_endpoint,
@@ -178,12 +180,16 @@ def generate_validator_config(host_ip, network_port, component_port,
         consensus_endpoint
     ]
     peer_list = list()
-    for node_info in node_info_list:
+    for i in range(0, node_id):
+        node_info = node_info_list[i]
         peer_list.append(
-            'tcp://' + node_info['ip'] + ':' + str(node_info['port']))
-    logging.debug(str(peer_list))
+            'tcp://' + node_info['gateway_ip'] + ':'
+            + str(node_info['validator_port'])
+        )
+    logging.debug('peer list: ' + str(peer_list))
 
-    validator_config['endpoint'] = endpoint
+    # changed endpoint from validator_container_name to gateway_ip
+    validator_config['endpoint'] = 'tcp://' + gateway_ip + ':' + str(network_port)
     validator_config['peering'] = 'static'
     validator_config['peers'] = peer_list
     validator_config['scheduler'] = 'parallel'
@@ -197,11 +203,16 @@ def generate_validator_config(host_ip, network_port, component_port,
     logging.info('Generated validator.toml')
 
 
-def start_validator(host_ip, network_port, component_port, consensus_port,
-                    node_info_list):
-    create_genesis_block(node_info_list)
-    generate_validator_config(host_ip, network_port, component_port,
-                              consensus_port, node_info_list)
+def start_validator(validator_container_name, network_port, component_port,
+                    consensus_port,
+                    node_info_list, node_id, gateway_ip):
+    logging.error("Trying to start validator with node id="+str(node_id))
+    if node_id == 0:
+        create_genesis_block(node_info_list)
+    generate_validator_config(validator_container_name, network_port,
+                              component_port,
+                              consensus_port, node_info_list, node_id,
+                              gateway_ip)
 
     logging.info("Starting sawtooth validator")
     if subprocess.run(['sawtooth-validator', '-vvv']) != 0:
@@ -210,16 +221,18 @@ def start_validator(host_ip, network_port, component_port, consensus_port,
 
 
 def main(args):
-    host_ip = args[0]
+    validator_container_name = args[0]
     gateway_ip = args[1]
     network_port = int(args[2])
     component_port = int(args[3])
     consensus_port = int(args[4])
+    notif_receiver_port = int(args[5])
 
     logging.basicConfig(level=logging.DEBUG)
 
     # Prepare the notification receiver
-    notif_receiver = NotificationReceiver(host_ip, network_port)
+    notif_receiver = \
+        NotificationReceiver(validator_container_name, notif_receiver_port)
     with notif_receiver:
         generate_keys()
 
@@ -233,10 +246,13 @@ def main(args):
         # send the public key generated by sawadm keygen to kds along with
         # gateway_ip and forwarded port
         logging.info("Sending request to kds")
+        logging.info('notif receiver port: ' + str(notif_receiver_port))
+        logging.info('network port: ' + str(network_port))
         resp = requests.post(config.kds_url, data=util.serialize_obj({
             'pk': pk,
-            'ip': gateway_ip,
-            'port': network_port
+            'gateway_ip': gateway_ip,
+            'validator_port': network_port,
+            'notif_receiver_port': notif_receiver_port
         }), timeout=4)
 
         if resp.status_code != http.HTTPStatus.OK:
@@ -244,18 +260,22 @@ def main(args):
             exit(1)
 
         logging.info("Waiting for KDS to send data...")
-        node_info_list = notif_receiver.get_data()
+        data = notif_receiver.get_data()
         logging.debug("Wait over")
+
+        node_info_list = data['node_info_list']
+        node_id = data['id']
         logging.debug("node_info_list: " + str(node_info_list))
 
     # start the validator
-    start_validator(host_ip, network_port, component_port, consensus_port,
-                    node_info_list)
+    start_validator(validator_container_name, network_port, component_port,
+                    consensus_port, node_info_list, node_id, gateway_ip)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 6:
-        print('required - <host_ip> <gateway ip> <network_port> '
-              '<component_port> <consensus_port>')
+    if len(sys.argv) < 7:
+        print('required - <validator container name> <gateway ip> '
+              '<network_port> '
+              '<component_port> <consensus_port> <notif_receiver_port>')
         exit(1)
     main(sys.argv[1:])
