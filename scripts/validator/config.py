@@ -20,5 +20,6 @@ network_pk = _key['network_pk']
 network_sk = _key['network_sk']
 
 
-_url = config['url']
-kds_url = _url['key_distribution_server']['submit']
+_kds_url_segments = config['url']['kds']['segment']
+kds_url = 'http://' + kds_ip + ':' + str(kds_port) \
+          + '/' + _kds_url_segments['submit']

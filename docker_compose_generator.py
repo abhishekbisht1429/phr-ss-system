@@ -57,7 +57,6 @@ def generate(host_id, n, gateway_ip):
                        + str(ports['validator_component']) + ' '
                        + str(ports['validator_consensus']) + ' '
                        + str(ports['notif_receiver']),
-            # 'network_mode': 'host'
             'ports':
                 [
                     str(ports['validator_network']) + ":"
@@ -76,7 +75,6 @@ def generate(host_id, n, gateway_ip):
             'command': 'settings-tp -v -C tcp://'
                        + validator_container_name + ':'
                        + str(ports['validator_component']),
-            # 'network_mode': 'host'
         }
 
         # rest api
@@ -97,9 +95,10 @@ def generate(host_id, n, gateway_ip):
                        + validator_container_name + ' '
                        + str(ports['validator_component']) + ' '
                        + str(ports['rest_api']),
-            # 'network_mode': 'host'
-            'ports': [str(ports['rest_api']) + ":" + str(ports[
-                                                             'rest_api'])]
+            'ports':
+                [
+                    str(ports['rest_api']) + ":" + str(ports['rest_api'])
+                ]
         }
 
         # consensus engine pbft
@@ -129,29 +128,6 @@ def generate(host_id, n, gateway_ip):
         services[rest_api_container_name] = rest_api
         services[consensus_engine_container_name] = consensus_engine
         services[tp_container_name] = tp
-
-    # stats
-    # influxdb_container_name = PREFIX + '-stats-influxdb'
-    # grafane_container_name = PREFIX + '-stats-grafana'
-    # influxdb = {
-    #     'image': 'influxdb:1.8.10-alpine',
-    #     'container_name': influxdb_container_name,
-    #     'ports': ['8086:8086'],
-    #     'volumes': [os.path.join(os.getcwd(), 'mount_binds', 'influxdb') +
-    #                 ':' + os.path.join('/', 'var', 'lib', 'influxdb')],
-    #     'entrypoint': 'bash /var/lib/influxdb/start_influxdb.sh'
-    # }
-    #
-    # grafana = {
-    #     'image': 'grafana/grafana:latest',
-    #     'container_name': grafane_container_name,
-    #     'ports': ['3000:3000'],
-    #     'volumes': [os.path.join(os.getcwd(), 'mount_binds', 'grafana') + ':'
-    #                 + os.path.join('/', 'var', 'lib', 'grafana')]
-    # }
-    # services[influxdb_container_name] = influxdb
-    # services[grafane_container_name] = grafana
-
     data['services'] = services
 
     with open('compose.yml', 'w') as compose_file:
