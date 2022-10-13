@@ -10,11 +10,12 @@ import logging
 import socket
 import signal
 
-from handler import request_handler
+from handler import bn_request_handler, ipfs_request_handler
 
 node_info_list = list()
 continue_distribution = True
 distribution_condition = threading.Condition()
+
 
 def distribute_info():
     while continue_distribution:
@@ -39,6 +40,18 @@ def distribute_info():
 
 
 class HSRequestHandler(BaseHTTPRequestHandler):
+
+    def respond(self, res_code, data):
+        # return response to the server
+        if res_code is not None:
+            self.send_response(res_code, self.responses[res_code][0])
+            self.end_headers()
+            if data is not None:
+                self.wfile.write(data)
+        else:
+            self.send_error(404)
+            self.end_headers()
+
     def do_POST(self):
         # Split path into its components
         path = parse.urlparse(self.path).path
@@ -65,23 +78,24 @@ class HSRequestHandler(BaseHTTPRequestHandler):
         if content_len > 0:
             data = self.rfile.read(content_len)
 
+        # Send the request to appropriate handler
         logging.info("received request from : " + str(self.client_address))
-        res_code, data = request_handler.handle(
-            path_components[1:],
-            data,
-            node_info_list,
-            distribution_condition
-        )
-
-        # return response to the server
-        if res_code is not None:
-            self.send_response(res_code, self.responses[res_code][0])
-            self.end_headers()
-            if data is not None:
-                self.wfile.write(data)
+        if path_components[1] == "blockchain":
+            res_code, data = bn_request_handler.handle(
+                path_components[2:],
+                data,
+                node_info_list,
+                distribution_condition
+            )
+        elif path_components[1] == "ifps":
+            res_code, data = ipfs_request_handler.handle_post(
+                path_components[2:],
+                data
+            )
         else:
-            self.send_error(404)
-            self.end_headers()
+            res_code, data = None, None
+
+        self.respond(res_code, data)
 
     def do_GET(self):
         # Split path into its components
@@ -95,17 +109,18 @@ class HSRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        res_code, data = request_handler.handle(path_components[1:])
-
-        # return response to the server
-        if res_code is not None:
-            self.send_response(res_code, self.responses[res_code][0])
-            self.end_headers()
-            if data is not None:
-                self.wfile.write(data)
+        # Send the request to appropriate handler
+        logging.info("received request from : " + str(self.client_address))
+        if path_components[1] == "ipfs":
+            logging.debug("delegating request to ipfs request handler")
+            res_code, data = ipfs_request_handler.handle_get(
+                path_components[2:],
+                self.headers
+            )
         else:
-            self.send_error(404)
-            self.end_headers()
+            res_code, data = None, None
+
+        self.respond(res_code, data)
 
 
 def sigint_handler(signum, frame):
