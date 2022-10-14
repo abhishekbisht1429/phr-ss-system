@@ -91,13 +91,14 @@ class SearchEventListener:
             event_list.ParseFromString(msg.content)
             for event in event_list.events:
                 print('event occurred')
-                logging.error('event occurred', event.event_type,
-                              event.attributes)
+                logging.error('event occurred' + str(event.event_type) +
+                              str(event.attributes))
                 self._events_buffer[event.attributes[0].value] = event.data
 
         logging.info("Stopped Listening for EVents")
 
     def stop_listening(self):
+        # TODO: implement a method by which the listener will stop for sure
         self._listening = False
 
     def wait_for_event(self, id, timeout=1000):
