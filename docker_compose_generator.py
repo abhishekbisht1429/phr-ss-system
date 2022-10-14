@@ -62,6 +62,9 @@ def generate(host_id, n, gateway_ip):
                     str(ports['validator_network']) + ":"
                     + str(ports['validator_network']),
 
+                    str(ports['validator_component']) + ":"
+                    + str(ports['validator_component']),
+
                     str(ports['notif_receiver']) + ":"
                     + str(ports['notif_receiver'])
                 ]
