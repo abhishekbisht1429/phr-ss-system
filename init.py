@@ -13,7 +13,9 @@ def generate_addresses(node_index, host_index):
     starting_node_port = starting_host_port + node_index * 5
     addresses['tcp'] = ('0.0.0.0', starting_node_port + 1)
     addresses['gateway'] = ('127.0.0.1', starting_node_port + 2)
-    addresses['rpc_api'] = ('127.0.0.1', starting_node_port + 3)
+    # NOTE: rpc api must not be made available on public domain, however,
+    # for development ease I am exposing it on all interfaces
+    addresses['rpc_api'] = ('0.0.0.0', starting_node_port + 3)
 
     return addresses
 
