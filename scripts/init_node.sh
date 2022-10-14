@@ -11,8 +11,9 @@ port=$1
 gateway_ip=$2
 opt=$3
 
-# TODO: put the url in a config file and load it
-kds_base_url="http://192.168.1.184:9000/ipfs"
+# TODO: Find a proper way to supply the url
+read -r kds_url < /data/ipfs/scripts/kds_url.txt
+kds_base_url="$kds_url/ipfs"
 bootstrap_list_url="$kds_base_url/bootstrap_list"
 swarm_key_url="$kds_base_url/swarm_key"
 
