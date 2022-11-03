@@ -142,3 +142,26 @@ def encrypt_obj(pub_key, obj):
 def decrypt_obj(priv_key, enc_data_b64):
     return cbor2.loads(ecies_decryption(priv_key, base64.b64decode(
         enc_data_b64)))
+
+
+class Timer:
+    store = dict()
+
+    def __init__(self, op, *args):
+        self._op = op
+        self._key = args
+
+    def __enter__(self):
+        self._start_time = time.time_ns()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        duration_ns = time.time_ns() - self._start_time
+
+        if self._op not in self.store:
+            self.store[self._op] = dict()
+
+        if self._key not in self.store[self._op]:
+            self.store[self._op][self._key] = list()
+
+        self.store[self._op][self._key].append(duration_ns)
+

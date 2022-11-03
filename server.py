@@ -78,7 +78,7 @@ if __name__ == '__main__':
     #     print("Invalid number of args")
     #     exit(1)
     # addr = (sys.argv[1], int(sys.argv[2]))
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     addr = (config.server_ip, config.server_port)
     server = HTTPServer(addr, HSRequestHandler)
     logging.info("serving requests from %s", addr)
