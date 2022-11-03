@@ -1,7 +1,12 @@
 import base64
 import hashlib
+import logging
 import math
 import os
+import pickle
+import shelve
+import threading
+import csv
 
 import cbor2
 from cryptography.hazmat.primitives import padding, hashes, serialization
@@ -12,6 +17,9 @@ import time
 from cryptography.hazmat.primitives.ciphers.aead import AESOCB3
 from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+import util
+from config import config
 
 
 def hash(*args) -> bytes:
@@ -140,6 +148,97 @@ def encrypt_obj(pub_key, obj):
 def decrypt_obj(priv_key, enc_data_b64):
     return cbor2.loads(ecies_decryption(priv_key, base64.b64decode(
         enc_data_b64)))
+
+
+class Timer:
+    _store = shelve.open(config['path']['timer_db'], writeback=True)
+    _sync = True
+    _condition = threading.Condition()
+
+    def __init__(self, op, *args):
+        self._op = op
+        self._key = args
+
+    def __enter__(self):
+        self._start_time = time.time_ns()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        duration_ns = time.time_ns() - self._start_time
+
+        if self._op not in self._store:
+            self._store[self._op] = dict()
+
+        if self._key not in self._store[self._op]:
+            self._store[self._op][self._key] = dict()
+
+        self._store[self._op][self._key][time.time_ns()] = duration_ns
+
+    @classmethod
+    def stop_sync(cls):
+        """
+        This method must never be called on the thread that calls bg_sync
+        :return:
+        """
+        cls._sync = False
+        with cls._condition:
+            cls._condition.notify()
+
+    @classmethod
+    def bg_sync(cls):
+        while cls._sync:
+            with cls._condition:
+                cls._condition.wait(timeout=5)
+                cls._store.sync()
+        logging.debug("sync stopped")
+
+    @classmethod
+    def clear(cls):
+        cls._store.clear()
+
+    @classmethod
+    def record_timings(cls, operation, *args, file=None, entry_id=None,
+                       verbose=False):
+        for op, timings in cls._store.items():
+            if op != operation:
+                continue
+            print(op)
+            for key, val in cls._store[op].items():
+                if args != key:
+                    continue
+                print("\t{}".format(key))
+                avg = 0
+                min_dur = 1e50
+                max_dur = 0
+                for ts, duration in val.items():
+                    if verbose:
+                        print("\t\t{}:  {} ms    {} s".format(ts,
+                                                              duration / 1e6,
+                                                              duration / 1e9))
+                    avg += duration
+                    min_dur = min(min_dur, duration)
+                    max_dur = max(max_dur, duration)
+                avg /= len(val)
+                avg_ms = avg / 1e6
+                max_dur_ms = max_dur / 1e6
+                min_dur_ms = min_dur / 1e6
+
+                avg_ns = avg / 1e9
+                max_dur_ns = max_dur / 1e9
+                min_dur_ns = min_dur / 1e9
+
+                print("\t\tAverage: {} ms\t{} s".format(avg_ms, avg_ns))
+                print("\t\tMax: {} ms\t{} s".format(max_dur_ms, max_dur_ns))
+                print("\t\tMin: {} ms\t{} s".format(min_dur_ms, min_dur_ns))
+
+                if file is not None:
+                    csv_writer = csv.writer(file)
+                    csv_writer.writerow([
+                            time.time_ns(),
+                            entry_id, avg_ms,
+                            max_dur_ms,
+                            min_dur_ms
+                    ])
+            print()
 
 
 if __name__ == '__main__':
