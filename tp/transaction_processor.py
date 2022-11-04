@@ -7,11 +7,11 @@ from sawtooth_sdk.processor.core import TransactionProcessor
 from sawtooth_sdk.processor.handler import TransactionHandler
 
 from transaction_family import TransactionPayload, State, InvalidAction, \
-    NAMESPACE, NAME, VERSION, EVENT_SEARCH_COMPLETE
+    NAMESPACE, NAME, VERSION, EVENT_SEARCH_COMPLETE, EVENT_PHR_GEN
 
 import logging
 
-from constants import ACTION_SET, ACTION_DEL, ACTION_SEARCH
+from transaction_family import ACTION_PHR_GEN, ACTION_DEL, ACTION_SEARCH
 import util
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,30 @@ def search(state, trapdoor, ee_pub_key_sz, request_id):
     print('added event')
 
 
+def phr_gen_v1(transaction, state):
+    request_id = transaction.data[0]
+    secure_entries = transaction.data[1]
+    for addr, value in secure_entries.items():
+        addr_hex = NAMESPACE + addr.hex()
+        logging.info('address: {}'.format(addr_hex))
+        state.set(addr_hex, value)
+    state.add_event(
+        event_type=EVENT_PHR_GEN,
+        attributes=[('id', request_id)]
+    )
+
+
+def phr_gen_v2(transaction, state):
+    addr_hex = transaction.data[0]
+    val = transaction.data[1]
+    state.set(addr_hex, val)
+    logging.info('State set at {} '.format(addr_hex))
+    state.add_event(
+        event_type=EVENT_PHR_GEN,
+        attributes=[('id', addr_hex)]
+    )
+
+
 class CustomTransactionHandler(TransactionHandler):
 
     @property
@@ -82,11 +106,11 @@ class CustomTransactionHandler(TransactionHandler):
         logger.error(transaction.data)
         logger.error(self.namespaces)
 
-        if transaction.action == ACTION_SET:
-            addr = transaction.data[0]
-            logging.info(addr)
-            value = transaction.data[1]
-            state.set(addr, value)
+        if transaction.action == ACTION_PHR_GEN:
+            if transaction.data[2] == 'v1':
+                phr_gen_v1(transaction, state)
+            elif transaction.data[2] == 'v2':
+                phr_gen_v2(transaction, state)
         elif transaction.action == ACTION_DEL:
             addr = transaction.data
         elif transaction.action == ACTION_SEARCH:

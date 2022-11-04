@@ -7,7 +7,13 @@ NAME = 'thesis'
 NAMESPACE = hashlib.sha512(NAME.encode('utf-8')).hexdigest()[:6]
 VERSION = '1.0'
 
+ACTION_PHR_GEN = 'phr_gen'
+ACTION_DEL = 'del'
+ACTION_SEARCH = 'search'
+
 EVENT_SEARCH_COMPLETE = NAME+'/'+'search_complete'
+EVENT_PHR_GEN = NAME + '/' + ACTION_PHR_GEN
+
 # def generate_address(key):
 #     return NAMESPACE + hashlib.sha512(str(key).encode('utf-8')).hexdigest()[
 #                        -64:]
@@ -70,7 +76,7 @@ class State:
         # address = generate_address(key)
         self._context.delete_state([addr])
 
-    def add_event(self, event_type, attributes, data):
+    def add_event(self, event_type, attributes=None, data=None):
         self._context.add_event(
             event_type=event_type,
             attributes=attributes,
@@ -83,3 +89,6 @@ class InvalidAction(Exception):
 
     def __str__(self):
         return self._msg
+
+
+
