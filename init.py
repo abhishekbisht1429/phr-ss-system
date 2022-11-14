@@ -50,10 +50,12 @@ def generate_compose_file(n, host_id):
 
         # TODO: Find the proper documentation on how to set swarm key
 
-        # Not required - will create a file directly in /data/ipfs/swarm key
-        # container['environment'] = {
-        #     'IPFS_SWARM_KEY_FILE': '/shared/swarm.key'
-        # }
+
+        container['environment'] = {
+            # Not required - will create a file directly in /data/ipfs/swarm key
+            # 'IPFS_SWARM_KEY_FILE': '/shared/swarm.key'
+            'IPFS_LOGGING': 'debug'
+        }
 
         services[container['container_name']] = container
 
