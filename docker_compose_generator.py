@@ -2,9 +2,10 @@ import subprocess
 import sys
 import os
 import yaml
+import config
 
 # TODO: Specify port mappings in quotes
-PREFIX = 'thesis'
+PREFIX = config.config['prefix']
 
 
 def generate_ports(host_id, node_index):
@@ -26,7 +27,7 @@ def generate_ports(host_id, node_index):
     return ports
 
 
-def generate(host_id, n, gateway_ip):
+def generate_pbft(host_id, n, gateway_ip):
     data = dict()
     data['version'] = '3.6'
 
@@ -137,11 +138,147 @@ def generate(host_id, n, gateway_ip):
         yaml.dump(data, compose_file, default_style=False, sort_keys=False)
 
 
+def generate_poet(host_id, n, gateway_ip):
+    data = dict()
+    data['version'] = '3.6'
+
+    services = dict()
+    for i in range(n):
+        ports = generate_ports(host_id, i)
+
+        # validator
+        validator_container_name = PREFIX + '-validator-' + str(i)
+        settings_tp_container_name = PREFIX + '-settings-tp-' + str(i)
+        rest_api_container_name = PREFIX + '-rest-api-' + str(i)
+        consensus_engine_container_name = PREFIX + '-consensus-engine-' + str(i)
+        poet_vr_container_name = PREFIX + '-poet-validator-registry-' + str(i)
+        tp_container_name = PREFIX + '-transaction-processor-' + str(i)
+
+        validator_keys_path = os.path.join(os.getcwd(), "mount_binds",
+                                           validator_container_name, "keys")
+        if not os.path.exists(validator_keys_path):
+            os.makedirs(validator_keys_path)
+
+        validator = {
+            'image': 'hyperledger/sawtooth-validator:1.0',
+            'container_name': validator_container_name,
+            'volumes':
+                [
+                    os.path.join(os.getcwd(), "mount_binds", "validator",
+                                 "shared") + ":" + os.path.join("/", "shared"),
+                    validator_keys_path + ":" + os.path.join("/", "etc",
+                                                             "sawtooth",
+                                                             "keys"),
+                ],
+            'command': 'bash /shared/scripts/init_validator.sh '
+                       + validator_container_name + ' '
+                       + gateway_ip + ' '
+                       + str(ports['validator_network']) + ' '
+                       + str(ports['validator_component']) + ' '
+                       + str(ports['validator_consensus']) + ' '
+                       + str(ports['notif_receiver']),
+            'ports':
+                [
+                    str(ports['validator_network']) + ":"
+                    + str(ports['validator_network']),
+
+                    str(ports['validator_component']) + ":"
+                    + str(ports['validator_component']),
+
+                    str(ports['notif_receiver']) + ":"
+                    + str(ports['notif_receiver'])
+                ]
+        }
+
+        # settings transaction processor
+        settings_tp = {
+            'image': 'hyperledger/sawtooth-settings-tp:1.0',
+            'container_name': settings_tp_container_name,
+            'depends_on': [validator_container_name],
+            'command': 'settings-tp -v -C tcp://'
+                       + validator_container_name + ':'
+                       + str(ports['validator_component']),
+        }
+
+        # rest api
+        rest_api = {
+            'image': 'hyperledger/sawtooth-rest-api:1.0',
+            'container_name': rest_api_container_name,
+            'volumes':
+                [
+                    os.path.join(os.getcwd(), "mount_binds", "rest-api",
+                                 "shared") + ':' + os.path.join("/", "shared"),
+                    os.path.join(os.getcwd(), 'mount_binds', 'rest-api',
+                                 'rest-api-' + str(i)) + ':' + os.path.join(
+                        '/', 'private')
+                ],
+            'depends_on': [validator_container_name],
+            'command': 'bash /shared/scripts/start_rest_api.sh '
+                       + rest_api_container_name + ' '
+                       + validator_container_name + ' '
+                       + str(ports['validator_component']) + ' '
+                       + str(ports['rest_api']),
+            'ports':
+                [
+                    str(ports['rest_api']) + ":" + str(ports['rest_api'])
+                ]
+        }
+
+        # consensus engine poet
+        consensus_engine = {
+            'image': 'hyperledger/sawtooth-poet-engine',
+            'container_name': consensus_engine_container_name,
+            'command': 'poet-engine -vvv --connect tcp://'
+                       + validator_container_name + ':'
+                       + str(ports['validator_consensus']),
+            'volumes': [
+                validator_keys_path + ':' + os.path.join("/", "etc",
+                                                         "sawtooth",
+                                                         "keys"),
+            ],
+            'depends_on': [validator_container_name],
+            # 'network_mode': 'host'
+        }
+
+        # poet validator registry
+        poet_validator_registry = {
+            'image': 'hyperledger/sawtooth-tp_validator_registry',
+            'container_name': poet_vr_container_name,
+            'command': 'poet-validator-registry-tp -vvv',
+            'depends_on': [validator_container_name]
+        }
+
+        # transaction processor
+        tp = {
+            'image': 'thesis-tp',
+            'container_name': tp_container_name,
+            'command': 'python3 transaction_processor.py '
+                       'tcp://' + validator_container_name + ':'
+                       + str(ports['validator_component']),
+            'depends_on': [validator_container_name],
+            # 'network_mode': 'host'
+        }
+
+        services[validator_container_name] = validator
+        services[settings_tp_container_name] = settings_tp
+        services[rest_api_container_name] = rest_api
+        services[consensus_engine_container_name] = consensus_engine
+        services[poet_vr_container_name] = poet_validator_registry
+        services[tp_container_name] = tp
+    data['services'] = services
+
+    with open('compose.yml', 'w') as compose_file:
+        yaml.dump(data, compose_file, default_style=False, sort_keys=False)
+
+
 def main(args):
     host_id = int(args[0])
     n = int(args[1])
     gateway_ip = args[2]
-    generate(host_id, n, gateway_ip)
+    if config.config['consensus'] == 'poet':
+        generate_poet(host_id, n, gateway_ip)
+    else:
+        generate_pbft(host_id, n, gateway_ip)
 
 
 if __name__ == '__main__':

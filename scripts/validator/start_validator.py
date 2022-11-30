@@ -18,6 +18,8 @@ import pickle
 import subprocess
 import json
 
+consensus = config.config['consensus']
+
 
 # find a way to use node_info_list
 
@@ -65,10 +67,9 @@ class NotificationReceiver:
                 self._port))
 
             def f(notif_server):
-                with notif_server._tcp_server:
-                    while notif_server._is_running:
-                        notif_server._tcp_server.handle_request()
-                        logging.debug("Request Handled")
+                while notif_server._is_running:
+                    notif_server._tcp_server.handle_request()
+                    logging.debug("Request Handled")
 
             self._tcp_server.server_bind()
             self._tcp_server.server_activate()
@@ -139,19 +140,33 @@ def create_genesis_block(node_info_list):
 
     # create settings proposal for genesis block
     genesis_proposal_file = 'config-consensus.batch'
-    member_keys = list()
-    for node_info in node_info_list:
-        member_keys.append(node_info['pk'])
-    member_keys_json = json.dumps(member_keys)
-    settings_proposal_cmd = [
-        'sawset', 'proposal', 'create',
-        '--key', user_sk_path,
-        '-o', genesis_proposal_file,
-        'sawtooth.consensus.algorithm.name=pbft',
-        'sawtooth.consensus.algorithm.version=1.0',
-        'sawtooth.consensus.pbft.members=' + member_keys_json,
-        'sawtooth.consensus.pbft.block_publishing_delay=0'
-    ]
+
+    if consensus == 'poet':
+        settings_proposal_cmd = [
+            'sawset', 'proposal', 'create',
+            '--key', user_sk_path,
+            '-o', genesis_proposal_file,
+            'sawtooth.consensus.algorithm.name=PoET',
+            'sawtooth.consensus.algorithm.version=0.1',
+            'sawtooth.poet.report_public_key_pem="$(cat * /etc/sawtooth/simulator_rk_pub.pem)"',
+            'sawtooth.poet.valid_enclave_measurements=$(poet enclave measurement)'
+            'sawtooth.poet.valid_enclave_basenames=$(poet enclave basename)'
+        ]
+    else:  # default pbft
+        member_keys = list()
+        for node_info in node_info_list:
+            member_keys.append(node_info['pk'])
+        member_keys_json = json.dumps(member_keys)
+        settings_proposal_cmd = [
+            'sawset', 'proposal', 'create',
+            '--key', user_sk_path,
+            '-o', genesis_proposal_file,
+            'sawtooth.consensus.algorithm.name=pbft',
+            'sawtooth.consensus.algorithm.version=1.0',
+            'sawtooth.consensus.pbft.members=' + member_keys_json,
+            'sawtooth.consensus.pbft.block_publishing_delay=0'
+        ]
+
     if subprocess.run(settings_proposal_cmd).returncode != 0:
         logging.error("Falied to create settings proposal for genesis block")
         exit(1)
@@ -188,8 +203,13 @@ def generate_validator_config(network_port,
 
     validator_config['endpoint'] = 'tcp://' + gateway_ip + ':' \
                                    + str(network_port)
-    validator_config['peering'] = 'static'
-    validator_config['peers'] = peer_list
+    if consensus == 'poet':
+        validator_config['peering'] = 'dynamic'
+        validator_config['seeds'] = peer_list
+    else:
+        validator_config['peering'] = 'static'
+        validator_config['peers'] = peer_list
+
     validator_config['scheduler'] = 'parallel'
     validator_config['network_public_key'] = config.network_pk
     validator_config['network_private_key'] = config.network_sk
@@ -204,7 +224,7 @@ def generate_validator_config(network_port,
 def start_validator(network_port, component_port,
                     consensus_port,
                     node_info_list, node_id, gateway_ip):
-    logging.debug("Trying to start validator with node id="+str(node_id))
+    logging.debug("Trying to start validator with node id=" + str(node_id))
     if node_id == 0:
         create_genesis_block(node_info_list)
     generate_validator_config(network_port,
@@ -250,7 +270,8 @@ def main(args):
             'pk': pk,
             'gateway_ip': gateway_ip,
             'validator_port': network_port,
-            'notif_receiver_port': notif_receiver_port
+            'notif_receiver_port': notif_receiver_port,
+            'consensus': consensus
         }), timeout=4)
 
         if resp.status_code != http.HTTPStatus.OK:

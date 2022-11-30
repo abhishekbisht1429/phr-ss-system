@@ -20,7 +20,7 @@ fi
 
 # copy validator scripts
 cp ./scripts/validator/config.py \
-   ./scripts/validator/config.yml \
+   ./config.yml \
    ./scripts/validator/start_validator.py \
    ./scripts/validator/util.py \
    ./scripts/validator/init_validator.sh \
