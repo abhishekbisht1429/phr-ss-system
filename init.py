@@ -4,6 +4,7 @@ import yaml
 import logging
 import shutil
 import subprocess
+from config import config
 
 
 def generate_addresses(node_index, host_index):
@@ -11,11 +12,12 @@ def generate_addresses(node_index, host_index):
     starting_host_port = 20000 + host_index * 200
 
     starting_node_port = starting_host_port + node_index * 5
-    addresses['tcp'] = ('0.0.0.0', starting_node_port + 1)
-    addresses['gateway'] = ('127.0.0.1', starting_node_port + 2)
+    addresses['tcp'] = (config['node']['ip']['tcp'], starting_node_port + 1)
+    addresses['gateway'] = (config['node']['ip']['gateway'], starting_node_port
+                            + 2)
     # NOTE: rpc api must not be made available on public domain, however,
     # for development ease I am exposing it on all interfaces
-    addresses['rpc_api'] = ('0.0.0.0', starting_node_port + 3)
+    addresses['rpc_api'] = (config['node']['ip']['rpc'], starting_node_port + 3)
 
     return addresses
 
