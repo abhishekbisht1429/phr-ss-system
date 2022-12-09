@@ -165,7 +165,7 @@ def create_genesis_block(node_info_list):
             'sawtooth.consensus.algorithm.name=raft',
             'sawtooth.consensus.algorithm.version=0.1',
             'sawtooth.consensus.raft.peers=' + member_keys_json,
-            # 'sawtooth.consensus.raft.block_publishing_delay=0'
+            'sawtooth.consensus.raft.block_publishing_delay=0'
         ]
     else:  # default pbft
         member_keys = list()
