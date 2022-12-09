@@ -360,7 +360,7 @@ def generate_raft(host_id, n, gateway_ip):
 
         # consensus engine raft
         consensus_engine = {
-            'image': 'hyperledger/sawtooth-raft-engine:0.1.3',
+            'image': 'hyperledger/sawtooth-raft-engine:0.1.2',
             'container_name': consensus_engine_container_name,
             'command': 'raft-engine ' + '-v ' * verbose_level + '-C tcp://'
                        + validator_container_name + ':'
