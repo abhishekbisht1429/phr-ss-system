@@ -19,6 +19,7 @@ import subprocess
 import json
 
 consensus = config.config['consensus']
+verbose_level = config.config['verbose_level']
 
 
 # find a way to use node_info_list
@@ -152,6 +153,20 @@ def create_genesis_block(node_info_list):
             'sawtooth.poet.valid_enclave_measurements=$(poet enclave measurement)'
             'sawtooth.poet.valid_enclave_basenames=$(poet enclave basename)'
         ]
+    elif consensus == 'raft':
+        member_keys = list()
+        for node_info in node_info_list:
+            member_keys.append(node_info['pk'])
+        member_keys_json = json.dumps(member_keys)
+        settings_proposal_cmd = [
+            'sawset', 'proposal', 'create',
+            '--key', user_sk_path,
+            '-o', genesis_proposal_file,
+            'sawtooth.consensus.algorithm.name=raft',
+            'sawtooth.consensus.algorithm.version=0.1',
+            'sawtooth.consensus.raft.peers=' + member_keys_json,
+            # 'sawtooth.consensus.raft.block_publishing_delay=0'
+        ]
     else:  # default pbft
         member_keys = list()
         for node_info in node_info_list:
@@ -206,6 +221,9 @@ def generate_validator_config(network_port,
     if consensus == 'poet':
         validator_config['peering'] = 'dynamic'
         validator_config['seeds'] = peer_list
+    elif consensus == 'raft':
+        validator_config['peering'] = 'static'
+        validator_config['peers'] = peer_list
     else:
         validator_config['peering'] = 'static'
         validator_config['peers'] = peer_list
@@ -233,7 +251,10 @@ def start_validator(network_port, component_port,
                               gateway_ip)
 
     logging.info("Starting sawtooth validator")
-    if subprocess.run(['sawtooth-validator', '-vvv']) != 0:
+    validator_cmd = ['sawtooth-validator']
+    if verbose_level > 0:
+        validator_cmd.append('-' + 'v' * verbose_level)
+    if subprocess.run(validator_cmd) != 0:
         logging.error("Falied to start validator")
         exit(1)
 
