@@ -1,4 +1,3 @@
-import pickle
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
@@ -8,11 +7,9 @@ from sawtooth_sdk.protobuf.events_pb2 import EventSubscription, EventFilter
 import config
 import os.path
 import urllib.parse as parse
-import json
 import logging
 from handler import external_request_handler, patient_request_handler, \
     doctor_request_handler
-import keys
 import blockchain_event_listener as bel
 import signal
 import util

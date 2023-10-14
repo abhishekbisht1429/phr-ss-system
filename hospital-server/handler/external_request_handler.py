@@ -1,8 +1,3 @@
-import json
-import secrets
-import sys
-import time
-import shelve
 import logging
 from http import HTTPStatus
 
@@ -15,8 +10,6 @@ import keys
 import util
 from constants import TXN_NAMESPACE, ACTION_SEARCH
 import blockchain_client as bc
-import blockchain_event_listener as bel
-from threading import Thread
 
 
 # search_event_listener = bel.SearchEventListener(config.validator_url)

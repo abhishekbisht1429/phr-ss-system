@@ -1,13 +1,12 @@
 import base64
 import hashlib
-import logging
 import os
 import shelve
 import threading
 import time
 
 import cbor2
-from cryptography.hazmat.primitives import hashes, serialization, padding
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESOCB3

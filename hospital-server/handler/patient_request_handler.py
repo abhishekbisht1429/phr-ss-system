@@ -1,16 +1,11 @@
 import base64
 import http
 import logging
-import secrets
 import shelve
-import sys
-import time
-import json
 
 import cbor2
 from cryptography.hazmat.primitives import serialization
 
-import config
 from http import HTTPStatus
 import requests
 import blockchain_client as bc
