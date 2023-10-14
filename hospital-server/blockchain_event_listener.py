@@ -5,11 +5,8 @@ import time
 import zmq
 from sawtooth_sdk.protobuf.client_event_pb2 import ClientEventsSubscribeRequest, \
     ClientEventsSubscribeResponse
-from sawtooth_sdk.protobuf.events_pb2 import EventSubscription, EventFilter, \
-    EventList
+from sawtooth_sdk.protobuf.events_pb2 import EventList
 from sawtooth_sdk.protobuf.validator_pb2 import Message
-
-import config
 
 
 # Two ways to do -

@@ -1,4 +1,4 @@
-.idea
+../.idea
 temp
 mount_binds
 compose.yml

@@ -1,6 +1,5 @@
 import base64
 import hashlib
-import logging
 import os
 import shelve
 import threading
@@ -9,7 +8,6 @@ from config import config
 import cbor2
 from cryptography.hazmat.primitives import padding, serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
 import time
 
 from cryptography.hazmat.primitives.ciphers.aead import AESOCB3

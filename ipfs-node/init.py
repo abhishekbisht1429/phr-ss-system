@@ -90,9 +90,9 @@ def setup_host(n, host_index, gateway_ip, bootstrap):
         os.mkdir(scripts_dir)
 
         # Copy scripts and replace any existing ones
-        shutil.copy('./scripts/init_node.sh', scripts_dir)
+        shutil.copy('scripts/init_node.sh', scripts_dir)
         # TODO: find a proper way to supply the url
-        shutil.copy('./scripts/kds_url.txt', scripts_dir)
+        shutil.copy('scripts/kds_url.txt', scripts_dir)
 
         addresses = generate_addresses(i, host_index)
         with open(os.path.join(init_scripts_dir, '001-init.sh'), 'w') as file:
