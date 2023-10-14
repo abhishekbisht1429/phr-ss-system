@@ -17,7 +17,7 @@ import blockchain_client as bc
 import config
 import keys
 import util
-from constants import TXN_NAMESPACE, ACTION_SET
+from constants import TXN_NAMESPACE, ACTION_PHR_GEN
 
 
 def __authenticated(user_id, passwd_hash):
@@ -34,7 +34,66 @@ def __decrypt(enc_data):
         )
     )
 
-def handle(path_components, raw_data):
+
+def phr_gen_v1(data, phr_gen_event_listener):
+    with util.Timer('phr_gen_v1', data['user_id']):
+        request_id = util.hash(
+            data['user_id'].encode('utf-8'),
+            util.time_stamp()
+        ).hex()
+        bc.add_transaction(
+            action=ACTION_PHR_GEN,
+            inputs=[TXN_NAMESPACE],
+            outputs=[TXN_NAMESPACE],
+            obj=(request_id, data['entries'], 'v1')
+        )
+        accepted, info = bc.submit_transactions(config.batches_url)
+        if accepted:
+            # Wait for transaction to commit
+            try:
+                phr_gen_event_listener.get_event(request_id, timeout=10000000)
+            except Exception as e:
+                logging.error(str(e))
+                return HTTPStatus.INTERNAL_SERVER_ERROR, None
+            logging.info("PHR Gen Transaction Successful")
+            return HTTPStatus.OK, None
+        else:
+            return HTTPStatus.INTERNAL_SERVER_ERROR, None
+
+
+def phr_gen_v2(data, phr_gen_event_listener):
+    with util.Timer('phr_gen_v1', data['user_id']):
+        # Decode the entries and add to transaction list
+        for key, val in data['entries'].items():
+            key_hex = TXN_NAMESPACE + key.hex()
+            print(len(key_hex), key_hex)
+            bc.add_transaction(action=ACTION_PHR_GEN,
+                               inputs=[TXN_NAMESPACE],
+                               outputs=[TXN_NAMESPACE],
+                               obj=(key_hex, val, 'v2'))
+
+        # submit transactions to blockchain validator
+        accepted, info = bc.submit_transactions(config.batches_url)
+
+        # TODO: Verify the entire submitted batch at once, as verifying
+        #  individual transactions will take time
+        # wait for transactions to get committed
+        if accepted:
+            for key, val in data['entries'].items():
+                key_hex = TXN_NAMESPACE + key.hex()
+                try:
+                    data = phr_gen_event_listener.get_event(key_hex,
+                                                            timeout=10000000)
+                except Exception as e:
+                    logging.error(str(e))
+                    return HTTPStatus.INTERNAL_SERVER_ERROR, None
+                logging.info('Transaction {} committed'.format(data))
+            logging.info("All transactions submitted")
+            return HTTPStatus.OK, None
+        return HTTPStatus.INTERNAL_SERVER_ERROR, None
+
+
+def handle(path_components, raw_data, phr_gen_event_listener):
     """
     :param path_components: list
     :param data: dict
@@ -100,19 +159,8 @@ def handle(path_components, raw_data):
             # TODO: Store the entries on blockchain by sending them to the
             #  blockchain node
 
-            # Decode the entries and add to transaction list
-            for key, val in data['entries'].items():
-                key_hex = TXN_NAMESPACE + key.hex()
-                print(len(key_hex), key_hex)
-                bc.add_transaction(action=ACTION_SET,
-                                   inputs=[TXN_NAMESPACE],
-                                   outputs=[TXN_NAMESPACE],
-                                   data=(key_hex, val))
-
-            # submit transactions to blockchain validator
-            accepted, info = bc.submit_transactions(config.batches_url)
-
-            if accepted:
-                return HTTPStatus.OK, None
-            else:
-                return HTTPStatus.INTERNAL_SERVER_ERROR, None
+            version = config.config['phr_gen']['version']
+            if version == 'v1':
+                return phr_gen_v1(data, phr_gen_event_listener)
+            elif version == 'v2':
+                return phr_gen_v2(data, phr_gen_event_listener)

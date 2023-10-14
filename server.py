@@ -1,6 +1,9 @@
+import pickle
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
+
+from sawtooth_sdk.protobuf.events_pb2 import EventSubscription, EventFilter
 
 import config
 import os.path
@@ -12,6 +15,7 @@ from handler import external_request_handler, patient_request_handler, \
 import keys
 import blockchain_event_listener as bel
 import signal
+import util
 
 
 class HSRequestHandler(BaseHTTPRequestHandler):
@@ -43,8 +47,11 @@ class HSRequestHandler(BaseHTTPRequestHandler):
 
         res_code = None
         if path_components[1] == "patient":
-            res_code, data = patient_request_handler.handle(path_components[2:],
-                                                            data)
+            res_code, data = patient_request_handler.handle(
+                path_components[2:],
+                data,
+                phr_gen_event_listener
+            )
         elif path_components[1] == "external":
             res_code, data = external_request_handler.handle(
                 path_components[2:], data, search_event_listener)
@@ -67,6 +74,8 @@ class HSRequestHandler(BaseHTTPRequestHandler):
 def sigint_handler(signum, frame):
     logging.info("Shutting Down Server")
     search_event_listener.stop_listening()
+    phr_gen_event_listener.stop_listening()
+    util.Timer.stop_sync()
     server.shutdown()
     # sys.exit()
 
@@ -78,21 +87,54 @@ if __name__ == '__main__':
     #     print("Invalid number of args")
     #     exit(1)
     # addr = (sys.argv[1], int(sys.argv[2]))
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     addr = (config.server_ip, config.server_port)
     server = HTTPServer(addr, HSRequestHandler)
     logging.info("serving requests from %s", addr)
 
-    # Start event listener
-    search_event_listener = bel.SearchEventListener(config.validator_url)
-    event_thread = Thread(target=search_event_listener.listen)
-    event_thread.start()
+    # Start search event listener
+    search_subscription = EventSubscription(
+        event_type='thesis/search_complete',
+        filters=[EventFilter(
+            key='id',
+            # TODO: set the match_string to a specific value unique for
+            #  the hospital
+            match_string='.*',
+            filter_type=EventFilter.REGEX_ANY
+        )]
+    )
+    search_event_listener = bel.EventListener(config.validator_url,
+                                              search_subscription)
+    search_event_thread = Thread(target=search_event_listener.listen)
+    search_event_thread.start()
+
+    # Start phr generation event listener
+    phr_gen_subscription = EventSubscription(
+        event_type='thesis/phr_gen',
+        filters=[EventFilter(
+            key='id',
+            # TODO: set the match_string to a specific value unique for
+            #  the hospital
+            match_string='.*',
+            filter_type=EventFilter.REGEX_ANY
+        )]
+    )
+    phr_gen_event_listener = bel.EventListener(config.validator_url,
+                                               phr_gen_subscription)
+    phr_gen_event_thread = Thread(target=phr_gen_event_listener.listen)
+    phr_gen_event_thread.start()
+
+    # start timer thread
+    timer_thread = Thread(target=util.Timer.bg_sync)
+    timer_thread.start()
 
     # start server
     server_thread = Thread(target=server.serve_forever)
     server_thread.start()
 
-    event_thread.join()
+    search_event_thread.join()
+    phr_gen_event_thread.join()
+    timer_thread.join()
     server_thread.join()
-    print('exiting')
+    logging.info("Exiting")
     # server.serve_forever()

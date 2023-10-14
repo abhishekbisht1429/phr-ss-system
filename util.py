@@ -1,7 +1,11 @@
 import base64
 import hashlib
+import logging
 import os
+import shelve
+import threading
 
+from config import config
 import cbor2
 from cryptography.hazmat.primitives import padding, serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -145,7 +149,9 @@ def decrypt_obj(priv_key, enc_data_b64):
 
 
 class Timer:
-    store = dict()
+    _store = shelve.open(config['path']['timer_db'], writeback=True)
+    _sync = True
+    _condition = threading.Condition()
 
     def __init__(self, op, *args):
         self._op = op
@@ -157,11 +163,27 @@ class Timer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration_ns = time.time_ns() - self._start_time
 
-        if self._op not in self.store:
-            self.store[self._op] = dict()
+        if self._op not in self._store:
+            self._store[self._op] = dict()
 
-        if self._key not in self.store[self._op]:
-            self.store[self._op][self._key] = list()
+        if self._key not in self._store[self._op]:
+            self._store[self._op][self._key] = dict()
 
-        self.store[self._op][self._key].append(duration_ns)
+        self._store[self._op][self._key][time.time_ns()] = duration_ns
 
+    @classmethod
+    def stop_sync(cls):
+        """
+        This method must never be called on the thread that calls bg_sync
+        :return:
+        """
+        cls._sync = False
+        with cls._condition:
+            cls._condition.notify()
+
+    @classmethod
+    def bg_sync(cls):
+        while cls._sync:
+            with cls._condition:
+                cls._condition.wait(timeout=5)
+                cls._store.sync()

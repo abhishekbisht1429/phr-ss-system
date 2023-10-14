@@ -1,6 +1,6 @@
 import hashlib
 
-ACTION_SET = 'set'
+ACTION_PHR_GEN = 'phr_gen'
 ACTION_SEARCH = 'search'
 TXN_FAMILY_NAME = 'thesis'
 TXN_FAMILY_VERSION = '1.0'

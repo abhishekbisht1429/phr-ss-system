@@ -16,28 +16,33 @@ import config
 # 1. create listener before every search request and destroy it after that
 # 2. create listener during startup send the search request and store the
 # results of events in a dictionary keyed by timestamp.
-class SearchEventListener:
-    def __init__(self, url):
+class EventListener:
+    def __init__(self, url, subscription):
         self._url = url
 
         self._context = zmq.Context()
         self._socket = self._context.socket(zmq.DEALER)
         self._socket.connect(url)
 
-        self._subscribe()
+        self._subscribe(subscription)
         self._listening = False
+
+        # TODO: use a circular buffer here
         self._events_buffer = dict()
 
-    def _subscribe(self):
-        print('subscribe')
-        subscription = EventSubscription(
-            event_type='thesis/search_complete',
-            filters=[EventFilter(
-                key='id',
-                match_string='.*',
-                filter_type=EventFilter.REGEX_ANY
-            )]
-        )
+    def _subscribe(self, subscription):
+        logging.debug('subscribe')
+        logging.debug('URL: ' + self._url)
+        # subscription = EventSubscription(
+        #     event_type='thesis/search_complete',
+        #     filters=[EventFilter(
+        #         key='id',
+        #         # TODO: set the match_string to a specific value unique for
+        #         #  the hospital
+        #         match_string='.*',
+        #         filter_type=EventFilter.REGEX_ANY
+        #     )]
+        # )
 
         request = ClientEventsSubscribeRequest(
             subscriptions=[subscription]
@@ -70,7 +75,7 @@ class SearchEventListener:
             raise Exception("Subscription Failed")
         else:
             print("success")
-            logging.error("Search Event Listener subscribed successfully")
+            logging.info("Search Event Listener subscribed successfully")
 
     def listen(self):
         logging.info("Started Listening for Events")
@@ -82,16 +87,15 @@ class SearchEventListener:
             msg.ParseFromString(resp)
 
             if msg.message_type != Message.CLIENT_EVENTS:
-                logging.error("Invalid Message type received")
+                logging.info("Invalid Message type received")
                 continue
 
-            logging.error("Valid message type received")
+            logging.info("Valid message type received")
 
             event_list = EventList()
             event_list.ParseFromString(msg.content)
             for event in event_list.events:
-                print('event occurred')
-                logging.error('event occurred' + str(event.event_type) +
+                logging.debug('event occurred' + str(event.event_type) +
                               str(event.attributes))
                 self._events_buffer[event.attributes[0].value] = event.data
 
@@ -101,14 +105,16 @@ class SearchEventListener:
         # TODO: implement a method by which the listener will stop for sure
         self._listening = False
 
-    def wait_for_event(self, id, timeout=1000):
+    def get_event(self, id, timeout=1000):
         count = 0
         while id not in self._events_buffer:
             count += 1
             time.sleep(count * 100 / 1000)
             if count * 100 == timeout:
-                return None
+                raise Exception("Timed out") # TODO: use an appropriate
+                # exception for timeout
 
         event_data = self._events_buffer[id]
+        # TODO: use circular buffer
         del self._events_buffer[id]
         return event_data

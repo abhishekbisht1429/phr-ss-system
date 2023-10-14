@@ -11,7 +11,7 @@ from sawtooth_signing import create_context
 from sawtooth_signing import CryptoFactory
 import secrets
 import random
-from constants import ACTION_SET, TXN_FAMILY_NAME, TXN_FAMILY_VERSION
+from constants import ACTION_PHR_GEN, TXN_FAMILY_NAME, TXN_FAMILY_VERSION
 
 _context = create_context('secp256k1')
 _private_key = _context.new_random_private_key()
@@ -71,8 +71,8 @@ def submit_transactions(url):
         return False, None
 
 
-def add_transaction(action, inputs, outputs, data):
-    payload_bytes = cbor2.dumps([action, data])
+def add_transaction(action, inputs, outputs, obj):
+    payload_bytes = cbor2.dumps([action, obj])
 
     txn_header_bytes = TransactionHeader(
         family_name=TXN_FAMILY_NAME,
