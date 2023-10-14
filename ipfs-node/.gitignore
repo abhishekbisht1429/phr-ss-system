@@ -1,0 +1,6 @@
+../.idea
+temp
+mount_binds
+compose.yml
+scripts/kds_url.txt
+config.yml

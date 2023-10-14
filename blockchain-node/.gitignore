@@ -1,0 +1,6 @@
+../.idea
+venv
+mount_binds
+compose.yml
+temp
+**/config.yml
