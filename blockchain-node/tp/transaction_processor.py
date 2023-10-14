@@ -2,7 +2,6 @@ import sys
 
 import cbor2
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from sawtooth_sdk.processor.core import TransactionProcessor
 from sawtooth_sdk.processor.handler import TransactionHandler
 
