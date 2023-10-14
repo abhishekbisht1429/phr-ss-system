@@ -1,4 +1,3 @@
-import sys
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from threading import Thread
 import pickle

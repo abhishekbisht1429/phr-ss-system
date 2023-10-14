@@ -1,12 +1,6 @@
-import logging
-import threading
 from http import HTTPStatus
 import util
 import config
-from threading import Thread
-import socket
-import pickle
-
 
 
 def handle(path_components, raw_data, node_info_list, distribute_condition):

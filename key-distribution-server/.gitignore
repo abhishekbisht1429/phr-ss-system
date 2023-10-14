@@ -1,5 +1,5 @@
 tmp
-.idea
+../.idea
 config.yml
 node_config.yml
 venv
