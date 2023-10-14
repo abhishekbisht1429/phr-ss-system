@@ -3,10 +3,8 @@ import os
 import time
 
 import main
-import shutil
 import config
 import util
-from temp.display_timings import display_timings
 import inspect
 
 

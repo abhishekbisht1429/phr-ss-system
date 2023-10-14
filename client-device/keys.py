@@ -1,13 +1,11 @@
 import os
 import shelve
-import sys
 
 from cryptography.hazmat.primitives import serialization
 
 import constants
 from config import keystore_path, hs_public_key_path, doc_pub_key_path
 from cryptography.hazmat.primitives.asymmetric import ec
-import util
 
 with shelve.open(keystore_path) as store:
     # Generate or load master key
