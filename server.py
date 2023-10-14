@@ -1,4 +1,7 @@
+import pickle
+import signal
 import sys
+import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import config
@@ -6,7 +9,10 @@ import os.path
 import urllib.parse as parse
 import json
 import logging
+
+import util
 from handler import hs_request_handler
+
 
 # Assuming that this sever is running on local network of the hospital
 # TODO: Find a way to secure the communication between HS and doctor device
@@ -41,7 +47,7 @@ class HSRequestHandler(BaseHTTPRequestHandler):
         res_code = None
         if path_components[1] == "hs":
             res_code, data = hs_request_handler.handle(path_components[2:],
-                                                            data)
+                                                       data)
 
         # return response to the server
         if res_code is not None:
@@ -54,13 +60,33 @@ class HSRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
+def sigint_handler(signum, frame):
+    logging.info("Shutting Down Server")
+    util.Timer.stop_sync()
+    server.shutdown()
+    # sys.exit()
+
+
+signal.signal(signal.SIGINT, sigint_handler)
+
 if __name__ == '__main__':
     # if len(sys.argv) < 3:
     #     print("Invalid number of args")
     #     exit(1)
     # addr = (sys.argv[1], int(sys.argv[2]))
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     addr = (config.server_ip, config.server_port)
     server = HTTPServer(addr, HSRequestHandler)
     logging.info("serving requests from %s", addr)
-    server.serve_forever()
+
+    # start timer thread
+    timer_thread = threading.Thread(target=util.Timer.bg_sync)
+    timer_thread.start()
+
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.start()
+    server_thread.join()
+
+    timer_thread.join()
+    print('exiting')
+    # server.serve_forever()

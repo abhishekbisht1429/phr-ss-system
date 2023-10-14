@@ -1,3 +1,4 @@
+import logging
 import os.path
 
 import requests
@@ -17,6 +18,27 @@ def add(file_path):
         else:
             print(res.status_code)
             return res.status_code, None
+
+def get(id):
+    res = requests.post(config.config['url']['ipfs_get'] + '/' + id)
+
+    if res.status_code == requests.codes.ok:
+        logging.info("download complete")
+        return res.status_code, res.content
+    else:
+        logging.error(res.status_code)
+        return res.status_code, None
+
+
+def download(id):
+    res = requests.get(config.config['url']['ipfs_gateway'] + '/' + id)
+
+    if res.status_code == requests.codes.ok:
+        logging.info("download complete")
+        return res.status_code, res.content
+    else:
+        logging.error(res.status_code)
+        return res.status_code, None
 
 
 if __name__ == '__main__':

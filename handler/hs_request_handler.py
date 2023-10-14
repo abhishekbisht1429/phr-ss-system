@@ -23,7 +23,7 @@ def extract_keywords(file_path):
                     break
                 for word in line.split():
                     keywords.add(word)
-
+        logging.debug('num of keywords: {}'.format(len(keywords)))
         return list(keywords)
 
 
@@ -84,9 +84,10 @@ def handle(path_components, raw_data):
             util.encrypt_file(file_path, enc_file_path, doc_enc_key)
 
             # upload the phr to IPFS
-            status_code, data = ipfs_client.add(enc_file_path)
-            if status_code != http.HTTPStatus.OK:
-                return http.HTTPStatus.INTERNAL_SERVER_ERROR, None
+            with util.Timer('phr_upload'):
+                status_code, data = ipfs_client.add(enc_file_path)
+                if status_code != http.HTTPStatus.OK:
+                    return http.HTTPStatus.INTERNAL_SERVER_ERROR, None
 
             # phr_id = util.bytes_to_b64(util.hash(file_path.encode('utf-8')))
             phr_id = data['Hash'].encode('utf-8')
@@ -101,5 +102,5 @@ def handle(path_components, raw_data):
 
 
 if __name__ == '__main__':
-    print(extract_keywords('../temp/user4'))
+    print(extract_keywords('../temp/regis'))
     print(gen_phr(('../temp/user1')))
