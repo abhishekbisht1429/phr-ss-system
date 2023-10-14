@@ -1,5 +1,5 @@
 import util
-import sys
+
 
 def extract_keywords(file_path):
     with util.Timer('extract_keywords', file_path):

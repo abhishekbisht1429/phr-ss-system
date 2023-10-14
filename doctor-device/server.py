@@ -1,4 +1,3 @@
-import pickle
 import signal
 import sys
 import threading
@@ -7,7 +6,6 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import config
 import os.path
 import urllib.parse as parse
-import json
 import logging
 
 import util

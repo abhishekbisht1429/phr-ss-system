@@ -1,10 +1,6 @@
-import base64
 import http
-import json
-import hashlib
 import tika
 from cryptography.hazmat.primitives import serialization
-from tika import parser
 import logging
 import ipfs_client
 import keys
