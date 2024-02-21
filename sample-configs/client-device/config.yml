@@ -1,0 +1,15 @@
+url:
+  hospital_server:
+    base: "http://localhost:9000"
+    registration: "patient/register"
+    phr_gen: "patient/phr_gen"
+    entries: "patient/entries"
+    doc_ids: "patient/doc_ids"
+    search: "external/search"
+
+path:
+  keystore: "temp/key_store"
+  current_head_store: "temp/current_head"
+  hs_public_key: 'temp/hs_public_key'
+  doc_public_key: 'temp/doc_pub_key'
+  timer_db: 'temp/timer_db'

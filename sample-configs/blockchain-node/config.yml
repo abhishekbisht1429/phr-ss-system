@@ -1,0 +1,30 @@
+path:
+  validator:
+    key_dir: '/etc/sawtooth/keys'
+    config_file: '/etc/sawtooth/validator.toml'
+  user:
+    key_dir: '/user_keys'
+
+address:
+  kds:
+    ip: '10.2.138.52'
+    port: 9005
+
+url:
+  kds:
+    segment:
+      submit: 'blockchain/submit'
+
+key:
+  network_pk: 'wFMwoOt>yFqI/ek.G[tfMMILHWw#vXB[Sv}>l>i)'
+  network_sk: 'r&oJ5aQDj4+V]p2:Lz70Eu0x#m%IwzBdP(}&hWM*'
+
+consensus: 'pbft'
+#consensus: 'poet'
+#consensus: 'raft'
+
+# application specific prefix for docker containers
+prefix: 'thesis'
+
+# verbose level
+verbose_level: 2

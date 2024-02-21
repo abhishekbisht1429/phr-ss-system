@@ -1,0 +1,21 @@
+
+server:
+  ip: 'localhost'
+  port: 9001
+
+path:
+  keystore: 'temp/keystore'
+  hs_pub_key: 'temp/hs_pub.key'
+  timer_db: 'temp/timer_db'
+
+
+url:
+  registration: 'http://localhost:9000/doctor/registration'
+
+  ipfs_gateway: 'http://10.2.40.20:20002/ipfs'
+
+#  ipfs_add: 'http://localhost:13000/api/v0/add'
+#  ipfs_add: 'http://10.2.40.20:20003/api/v0/add'
+  ipfs_add: 'http://127.0.0.1:20003/api/v0/add'
+
+  ipfs_get: 'http://10.2.40.20:20003/api/v0/get'

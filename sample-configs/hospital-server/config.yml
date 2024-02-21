@@ -1,0 +1,32 @@
+path:
+  user_db: 'temp/user_db'
+  doc_db: 'temp/doc_db'
+  keystore: 'temp/keystore'
+  timer_db: 'temp/timer_db'
+
+server:
+  ip: 'localhost'
+  port: 9000
+
+url:
+  blockchain_node:
+#    batches: 'http://localhost:8008/batches'
+    batches: 'http://127.0.0.1:11003/batches'
+#    batches: 'http://10.2.40.20:11003/batches'
+
+#    state: 'http://localhost:8008/state/'
+    state: 'http://127.0.0.1:11003/state/'
+#    state: 'http://10.2.40.20:11003/state/'
+
+#    validator: 'tcp://localhost:4004'
+    validator: 'tcp://127.0.0.1:11001'
+#    validator: 'tcp://10.2.40.20:11001'
+
+  doctor:
+    phr_gen_seg: 'hs/phr_gen'
+
+search:
+  version: 'v1'
+
+phr_gen:
+  version: 'v1'

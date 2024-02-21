@@ -1,0 +1,18 @@
+path:
+  ipfs:
+    swarm_key: 'tmp/ipfs/swarm.key'
+
+server:
+  ip: '0.0.0.0'
+  port: 9005
+
+url:
+  blockchain_node:
+    batches: 'http://localhost:8008/batches'
+    state: 'http://localhost:8008/state/'
+    validator: 'tcp://localhost:4004'
+
+  doctor:
+    phr_gen_seg: 'hs/phr_gen'
+
+total_nodes: 5
