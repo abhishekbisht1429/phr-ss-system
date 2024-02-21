@@ -1,0 +1,11 @@
+@ARTICLE{10254575,
+  author={Bisht, Abhishek and Das, Ashok Kumar and Niyato, Dusit and Park, Youngho},
+  journal={IEEE Open Journal of the Communications Society},
+  title={Efficient Personal-Health-Records Sharing in Internet of Medical Things Using Searchable Symmetric Encryption, Blockchain, and IPFS},
+  year={2023},
+  volume={4},
+  number={},
+  pages={2225-2244},
+  keywords={InterPlanetary File System;Blockchains;Encryption;Dictionaries;Cryptography;File systems;Internet of Medical Things;Healthcare system;searchable encryption;blockchain;security;Internet of Medical Things (IoMT);inter-planetary file system (IPFS) decentralized storage},
+  doi={10.1109/OJCOMS.2023.3316922}
+ }
